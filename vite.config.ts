@@ -1,4 +1,5 @@
 import { defineConfig, loadEnv } from 'vite';
+import vue from '@vitejs/plugin-vue';
 import { resolve } from 'path';
 import { copyFileSync } from 'fs';
 
@@ -58,7 +59,8 @@ export default ({ mode }) => {
         // For production library builds, use relative paths so ChurchTools can control deployment location
         base: `/extensions/${key}/`,
         build: isDevelopment ? {} : (buildMode === 'advanced' ? advancedBuildConfig : simpleBuildConfig),
-        plugins: isDevelopment ? [] : [
+        plugins: isDevelopment ? [vue()] : [
+            vue(),
             // Copy manifest.json to dist after build
             {
                 name: 'copy-manifest',

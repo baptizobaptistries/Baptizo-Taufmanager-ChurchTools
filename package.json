@@ -18,11 +18,15 @@
         "deploy:legacy": "npm run clean && npm run build:legacy && node scripts/package.js"
     },
     "dependencies": {
-        "@churchtools/extension-points": "github:churchtools/churchtools-extension-points"
+        "@churchtools/extension-points": "github:churchtools/churchtools-extension-points",
+        "chart.js": "^4.5.1",
+        "vue": "^3.5.24",
+        "vue-chartjs": "^5.3.3"
     },
     "devDependencies": {
         "@churchtools/churchtools-client": "^1.4.0",
         "@types/node": "^24.3.0",
+        "@vitejs/plugin-vue": "^6.0.2",
         "typescript": "^5.9.2",
         "vite": "^7.1.2"
     }
