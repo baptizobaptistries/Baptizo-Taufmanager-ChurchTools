@@ -15,16 +15,28 @@ const props = defineProps<{
 
 const chartData = computed(() => ({
   labels: props.data.labels,
-  datasets: [{
-    label: 'Taufen',
-    backgroundColor: '#3b82f6',
-    borderColor: '#3b82f6',
-    data: props.data.datasets[0].data
-  }]
+  datasets: props.data.datasets.map(ds => ({
+    ...ds,
+    pointRadius: 4,
+    pointHoverRadius: 6
+  }))
 }));
 
 const chartOptions = {
   responsive: true,
-  maintainAspectRatio: false
+  maintainAspectRatio: false,
+  scales: {
+    y: {
+      ticks: {
+        stepSize: 1
+      },
+      beginAtZero: true
+    }
+  },
+  plugins: {
+    legend: {
+      position: 'bottom' as const
+    }
+  }
 };
 </script>
