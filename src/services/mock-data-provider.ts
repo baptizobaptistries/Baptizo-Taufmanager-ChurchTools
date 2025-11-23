@@ -6,127 +6,127 @@ export class MockDataProvider implements DataProvider {
         {
             id: 100,
             title: 'Taufinteressenten',
-            members: [
-                {
-                    id: 1,
-                    firstName: 'Anna',
-                    lastName: 'Anfänger',
-                    status: 'active',
-                    entry_date: '2024-10-01',
-                    fields: {
-                        seminar_besucht_am: null,
-                    },
-                    imageUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Anna',
-                },
-                {
-                    id: 2,
-                    firstName: 'Ben',
-                    lastName: 'Bereit',
-                    status: 'active',
-                    entry_date: '2024-09-15',
-                    fields: {
-                        seminar_besucht_am: '2024-10-15',
-                    },
-                    imageUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Ben',
-                },
-                {
-                    id: 3,
-                    firstName: 'Chris',
-                    lastName: 'Chillig',
-                    status: 'inactive',
-                    entry_date: '2024-01-10',
-                    fields: {
-                        seminar_besucht_am: null,
-                    },
-                    imageUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Chris',
-                },
-                // Case 1: Ausstehendes Seminar (Active, No Seminar)
-                {
-                    id: 10,
-                    firstName: 'Simon',
-                    lastName: 'Seminar-Los',
-                    status: 'active',
-                    entry_date: '2024-11-01',
-                    fields: { seminar_besucht_am: null },
-                    imageUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Simon',
-                },
-                // Case 2: Ausstehende Taufe (Seminar visited, No Baptism)
-                {
-                    id: 11,
-                    firstName: 'Tim',
-                    lastName: 'Tauf-Wartend',
-                    status: 'active',
-                    entry_date: '2024-08-01',
-                    fields: { seminar_besucht_am: '2024-08-15' },
-                    imageUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Tim',
-                },
-            ],
+            members: [],
         },
         {
             id: 101,
             title: 'Getaufte',
-            members: [
-                {
-                    id: 4,
-                    firstName: 'Dora',
-                    lastName: 'Durch',
-                    status: 'active',
-                    entry_date: '2024-08-01',
-                    fields: {
-                        seminar_besucht_am: '2024-09-01',
-                        getauft_am: '2024-11-01',
-                        urkunde_ueberreicht: false,
-                        in_gemeinde_integriert: false,
-                    },
-                    imageUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Dora',
-                },
-                {
-                    id: 5,
-                    firstName: 'Emil',
-                    lastName: 'Etabliert',
-                    status: 'active',
-                    entry_date: '2024-01-05',
-                    fields: {
-                        seminar_besucht_am: '2024-01-10',
-                        getauft_am: '2024-02-20',
-                        urkunde_ueberreicht: true,
-                        in_gemeinde_integriert: true,
-                    },
-                    imageUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Emil',
-                },
-                // Case 3: Offene Urkunden (Baptized, No Certificate)
-                {
-                    id: 12,
-                    firstName: 'Ulla',
-                    lastName: 'Urkunden-Los',
-                    status: 'active',
-                    entry_date: '2024-10-01',
-                    fields: {
-                        seminar_besucht_am: '2024-10-10',
-                        getauft_am: '2024-11-15',
-                        urkunde_ueberreicht: false,
-                        in_gemeinde_integriert: true,
-                    },
-                    imageUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Ulla',
-                },
-                // Case 4: Fehlende Integration (Baptized, No Integration)
-                {
-                    id: 13,
-                    firstName: 'Ingo',
-                    lastName: 'Integrations-Los',
-                    status: 'active',
-                    entry_date: '2024-09-01',
-                    fields: {
-                        seminar_besucht_am: '2024-09-15',
-                        getauft_am: '2024-10-20',
-                        urkunde_ueberreicht: true,
-                        in_gemeinde_integriert: false,
-                    },
-                    imageUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Ingo',
-                },
-            ],
+            members: [],
         },
     ];
+
+    constructor() {
+        this.generateRandomData();
+    }
+
+    private generateRandomData() {
+        const firstNames = ['Anna', 'Ben', 'Chris', 'Dora', 'Emil', 'Felix', 'Greta', 'Hannes', 'Ina', 'Jan', 'Klara', 'Leo', 'Mia', 'Noah', 'Paula', 'Paul', 'Sarah', 'Tim', 'Ulla', 'Vera'];
+        const lastNames = ['Müller', 'Schmidt', 'Schneider', 'Fischer', 'Weber', 'Meyer', 'Wagner', 'Becker', 'Schulz', 'Hoffmann', 'Koch', 'Richter', 'Klein', 'Wolf', 'Schröder', 'Neumann', 'Schwarz', 'Zimmermann'];
+
+        // Helper to get random date within last N months
+        const getRandomDate = (monthsBack: number) => {
+            const date = new Date();
+            date.setMonth(date.getMonth() - Math.floor(Math.random() * monthsBack));
+            date.setDate(Math.floor(Math.random() * 28) + 1);
+            return date.toISOString().split('T')[0];
+        };
+
+        // 1. Generate Random "Interessenten" (Pool)
+        for (let i = 0; i < 15; i++) {
+            const entryDate = getRandomDate(24);
+            const hasSeminar = Math.random() > 0.5;
+            const seminarDate = hasSeminar ? getRandomDate(12) : null; // Seminar usually after entry, simplified here to just random recent
+
+            this.groups[0].members.push({
+                id: 1000 + i,
+                firstName: firstNames[Math.floor(Math.random() * firstNames.length)],
+                lastName: lastNames[Math.floor(Math.random() * lastNames.length)],
+                status: 'active',
+                entry_date: entryDate,
+                fields: {
+                    seminar_besucht_am: seminarDate,
+                },
+                imageUrl: `https://api.dicebear.com/7.x/avataaars/svg?seed=${i}`,
+            });
+        }
+
+        // 2. Generate Random "Getaufte" (Baptized)
+        for (let i = 0; i < 20; i++) {
+            const entryDate = getRandomDate(24);
+            const seminarDate = getRandomDate(20);
+            const baptismDate = getRandomDate(18); // Baptism after seminar
+
+            this.groups[1].members.push({
+                id: 2000 + i,
+                firstName: firstNames[Math.floor(Math.random() * firstNames.length)],
+                lastName: lastNames[Math.floor(Math.random() * lastNames.length)],
+                status: 'active',
+                entry_date: entryDate,
+                fields: {
+                    seminar_besucht_am: seminarDate,
+                    getauft_am: baptismDate,
+                    urkunde_ueberreicht: Math.random() > 0.2,
+                    in_gemeinde_integriert: Math.random() > 0.3,
+                },
+                imageUrl: `https://api.dicebear.com/7.x/avataaars/svg?seed=${i + 100}`,
+            });
+        }
+
+        // 3. Add Specific Test Cases (Fixed IDs for stability)
+        // Case 1: Ausstehendes Seminar (Active, No Seminar)
+        this.groups[0].members.push({
+            id: 10,
+            firstName: 'Simon',
+            lastName: 'Seminar-Los',
+            status: 'active',
+            entry_date: '2024-11-01',
+            fields: { seminar_besucht_am: null },
+            imageUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Simon',
+        });
+
+        // Case 2: Ausstehende Taufe (Seminar visited, No Baptism)
+        this.groups[0].members.push({
+            id: 11,
+            firstName: 'Tim',
+            lastName: 'Tauf-Wartend',
+            status: 'active',
+            entry_date: '2024-08-01',
+            fields: { seminar_besucht_am: '2024-08-15' },
+            imageUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Tim',
+        });
+
+        // Case 3: Offene Urkunden (Baptized, No Certificate)
+        this.groups[1].members.push({
+            id: 12,
+            firstName: 'Ulla',
+            lastName: 'Urkunden-Los',
+            status: 'active',
+            entry_date: '2024-10-01',
+            fields: {
+                seminar_besucht_am: '2024-10-10',
+                getauft_am: '2024-11-15',
+                urkunde_ueberreicht: false,
+                in_gemeinde_integriert: true,
+            },
+            imageUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Ulla',
+        });
+
+        // Case 4: Fehlende Integration (Baptized, No Integration)
+        this.groups[1].members.push({
+            id: 13,
+            firstName: 'Ingo',
+            lastName: 'Integrations-Los',
+            status: 'active',
+            entry_date: '2024-09-01',
+            fields: {
+                seminar_besucht_am: '2024-09-15',
+                getauft_am: '2024-10-20',
+                urkunde_ueberreicht: true,
+                in_gemeinde_integriert: false,
+            },
+            imageUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Ingo',
+        });
+    }
 
     private events: BaptizoEvent[] = [
         {

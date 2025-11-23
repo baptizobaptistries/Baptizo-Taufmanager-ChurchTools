@@ -304,7 +304,7 @@ const baptismData = computed(() => {
         tension: 0.4
       },
       { 
-        label: 'Seminar-Besucher',
+        label: 'Seminar-Absolventen',
         data: dataSeminar,
         borderColor: '#f59e0b',
         backgroundColor: '#f59e0b',
@@ -328,28 +328,36 @@ const baptismData = computed(() => {
 const pendingSeminar = computed(() => {
   const interestedGroup = groups.value.find(g => g.id === 100);
   if (!interestedGroup) return [];
-  return interestedGroup.members.filter(p => p.status === 'active' && !p.fields.seminar_besucht_am);
+  return interestedGroup.members
+    .filter(p => p.status === 'active' && !p.fields.seminar_besucht_am)
+    .map(p => ({ ...p, subtitle: `Interesse: ${p.entry_date || 'N/A'}` }));
 });
 
 // 2. Ausstehende Taufe: Active in Pool (100), Has Seminar, No Baptism (implicitly if in Pool)
 const pendingBaptism = computed(() => {
   const interestedGroup = groups.value.find(g => g.id === 100);
   if (!interestedGroup) return [];
-  return interestedGroup.members.filter(p => p.status === 'active' && p.fields.seminar_besucht_am);
+  return interestedGroup.members
+    .filter(p => p.status === 'active' && p.fields.seminar_besucht_am)
+    .map(p => ({ ...p, subtitle: `Seminar: ${p.fields.seminar_besucht_am}` }));
 });
 
 // 3. Offene Urkunden: In Baptized (101), No Certificate
 const missingCertificates = computed(() => {
   const baptizedGroup = groups.value.find(g => g.id === 101);
   if (!baptizedGroup) return [];
-  return baptizedGroup.members.filter(p => !p.fields.urkunde_ueberreicht);
+  return baptizedGroup.members
+    .filter(p => !p.fields.urkunde_ueberreicht)
+    .map(p => ({ ...p, subtitle: `Taufe: ${p.fields.getauft_am}` }));
 });
 
 // 4. Fehlende Integration: In Baptized (101), No Integration
 const missingIntegration = computed(() => {
   const baptizedGroup = groups.value.find(g => g.id === 101);
   if (!baptizedGroup) return [];
-  return baptizedGroup.members.filter(p => !p.fields.in_gemeinde_integriert);
+  return baptizedGroup.members
+    .filter(p => !p.fields.in_gemeinde_integriert)
+    .map(p => ({ ...p, subtitle: `Taufe: ${p.fields.getauft_am}` }));
 });
 </script>
 

@@ -19,13 +19,14 @@
 import type { BaptizoPerson } from '../types/baptizo-types';
 
 const props = defineProps<{
-  persons: BaptizoPerson[],
+  persons: (BaptizoPerson & { subtitle?: string })[],
   type: 'warning' | 'info'
 }>();
 
-const getStatusText = (p: BaptizoPerson) => {
-  if (props.type === 'warning') return `Seminar: ${p.fields.seminar_besucht_am}`;
-  if (props.type === 'info') return 'Urkunde fehlt';
+const getStatusText = (p: BaptizoPerson & { subtitle?: string }) => {
+  if (p.subtitle) return p.subtitle;
+  if (props.type === 'warning') return 'Aktion erforderlich';
+  if (props.type === 'info') return 'Info';
   return '';
 };
 </script>
