@@ -35,7 +35,7 @@ const chartOptions = {
   },
   plugins: {
     legend: {
-      position: 'bottom' as const
+      display: false
     }
   }
 };

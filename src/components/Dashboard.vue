@@ -61,7 +61,7 @@
       <!-- Chart Section -->
       <section class="master-chart-section">
         <div class="chart-header">
-          <h3>Übersicht</h3>
+          <h3 class="chart-title">ÜBERSICHT</h3>
           <div class="chart-controls">
             <!-- Rolling Months -->
             <div class="btn-group">
@@ -123,7 +123,6 @@
 
       <!-- Global Filters -->
       <div class="global-filters">
-        <span class="filter-label">Wartezeit:</span>
         <div class="filter-buttons">
           <button 
             v-for="filter in ['all', '>2w', '>6w', '>12w']" 
@@ -166,7 +165,7 @@
         <!-- List 3 -->
         <div class="list-card">
           <div class="list-header">
-            <h4>Offene Urkunden</h4>
+            <h4>Ausstehende Urkunde</h4>
             <span class="badge badge-count">{{ listCertificatePending.length }}</span>
           </div>
           <div v-if="listCertificatePending.length === 0" class="empty-state">
@@ -178,7 +177,7 @@
         <!-- List 4 -->
         <div class="list-card">
           <div class="list-header">
-            <h4>Fehlende Integration</h4>
+            <h4>Ausstehende Integration</h4>
             <span class="badge badge-count">{{ listIntegrationPending.length }}</span>
           </div>
           <div v-if="listIntegrationPending.length === 0" class="empty-state">
@@ -539,7 +538,11 @@ const chartData = computed(() => {
     const sortedYears = [...selectedYears.value].sort((a, b) => b - a);
     
     sortedYears.forEach((year, idx) => {
-      const opacity = idx === 0 ? 1.0 : (1.0 - (idx * 0.12));
+      // Progressive transparency: newest 100%, then 50%, then 20%
+      let opacity;
+      if (idx === 0) opacity = 1.0;      // Current/newest year
+      else if (idx === 1) opacity = 0.5; // Previous year  
+      else opacity = 0.2;                // Older years
       
       const intData = new Array(12).fill(0);
       const semData = new Array(12).fill(0);
@@ -842,7 +845,7 @@ onMounted(() => loadData());
 
 /* Dashboard Content */
 .dashboard-content {
-  padding: 2rem;
+  padding: 2rem 24px;
   max-width: 1400px;
   margin: 0 auto;
   display: flex;
@@ -896,6 +899,18 @@ onMounted(() => loadData());
   justify-content: space-between;
   align-items: center;
   margin-bottom: 1.5rem;
+}
+
+.chart-title {
+  font-size: 0.9rem;
+  color: #888;
+  margin: 0;
+  font-weight: bold;
+  letter-spacing: 1px;
+}
+
+.chart-container-large {
+  height: 400px;
 }
 
 .chart-controls {
@@ -970,11 +985,6 @@ onMounted(() => loadData());
   border-radius: 8px;
 }
 
-.filter-label {
-  font-weight: bold;
-  color: #aaa;
-}
-
 .filter-buttons {
   display: flex;
   gap: 0.5rem;
@@ -999,7 +1009,7 @@ onMounted(() => loadData());
 /* Lists Grid */
 .lists-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
   gap: 1.5rem;
 }
 
