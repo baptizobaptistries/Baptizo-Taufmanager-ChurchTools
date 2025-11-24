@@ -3,8 +3,8 @@
     <!-- Header -->
     <header class="dashboard-header">
       <div class="logo-area">
-        <img src="/bildmarke.svg" alt="Baptizo Logo" width="40" height="40" />
-        <h1>Baptizo Taufmanager</h1>
+        <img src="/logo.png" alt="Baptizo Logo" class="logo-img" />
+        <h1 class="app-title">Baptizo Taufmanager</h1>
       </div>
       <div class="actions">
         <select v-if="settings.multiSiteMode" class="location-filter">
@@ -761,10 +761,16 @@ onMounted(() => loadData());
   gap: 1rem; 
 }
 
-.logo-area h1 { 
+.logo-img {
+  height: 1.5em;
+  width: auto;
+}
+
+.app-title { 
   margin: 0; 
   font-size: 1.5rem; 
-  font-weight: 600; 
+  font-weight: bold;
+  text-transform: uppercase;
 }
 
 .actions { 
@@ -910,7 +916,7 @@ onMounted(() => loadData());
 }
 
 .chart-container-large {
-  height: 400px;
+  height: 300px;
 }
 
 .chart-controls {
