@@ -61,6 +61,9 @@ const handleClick = (person: BaptizoPerson) => {
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   transition: background-color 0.2s;
 }
+.person-item:last-child {
+  border-bottom: none;
+}
 .person-item.clickable {
   cursor: pointer;
 }

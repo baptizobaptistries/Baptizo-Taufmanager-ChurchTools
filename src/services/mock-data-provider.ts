@@ -18,7 +18,7 @@ export class MockDataProvider implements DataProvider {
     ];
 
     constructor() {
-        this.generateRandomData();
+        this.generateDeterministicData();
     }
 
     async updatePerson(updatedPerson: BaptizoPerson): Promise<void> {
@@ -52,60 +52,125 @@ export class MockDataProvider implements DataProvider {
         }
     }
 
-    private generateRandomData() {
+    private generateDeterministicData() {
         const firstNames = ['Anna', 'Ben', 'Chris', 'Dora', 'Emil', 'Felix', 'Greta', 'Hannes', 'Ina', 'Jan', 'Klara', 'Leo', 'Mia', 'Noah', 'Paula', 'Paul', 'Sarah', 'Tim', 'Ulla', 'Vera', 'Lukas', 'Marie', 'Sophie', 'Elias', 'Leon', 'Finn', 'Lena', 'Emily', 'Luca', 'Max'];
         const lastNames = ['Müller', 'Schmidt', 'Schneider', 'Fischer', 'Weber', 'Meyer', 'Wagner', 'Becker', 'Schulz', 'Hoffmann', 'Koch', 'Richter', 'Klein', 'Wolf', 'Schröder', 'Neumann', 'Schwarz', 'Zimmermann', 'Braun', 'Krüger', 'Hofmann', 'Hartmann', 'Lange', 'Schmitt', 'Werner', 'Schmitz'];
 
-        // Helper to get random date in a specific year, weighted towards second half
-        const getRandomDateInYear = (year: number) => {
-            const isSecondHalf = Math.random() > 0.3; // 70% chance for second half
-            const month = isSecondHalf ? Math.floor(Math.random() * 6) + 6 : Math.floor(Math.random() * 6);
-            const day = Math.floor(Math.random() * 28) + 1;
-            const date = new Date(year, month, day);
-            // Ensure we don't generate future dates if year is current year (assuming 2025 is current)
-            const now = new Date();
-            if (year === now.getFullYear() && date > now) {
-                return now.toISOString().split('T')[0];
-            }
-            return date.toISOString().split('T')[0];
-        };
-
-        // Distribution Config
-        const years = [
+        // Matrix: Exact distribution per year
+        const yearConfigs = [
             { year: 2023, interested: 8, seminar: 5, baptized: 5 },
             { year: 2024, interested: 14, seminar: 12, baptized: 10 },
             { year: 2025, interested: 25, seminar: 20, baptized: 19 }
         ];
 
+        const TODAY = new Date('2025-11-25');
         let idCounter = 1000;
+        let nameIndex = 0;
+        const allBaptized: BaptizoPerson[] = []; // Track all baptized for widget logic
 
-        years.forEach(config => {
+        yearConfigs.forEach(config => {
             for (let i = 0; i < config.interested; i++) {
                 const id = idCounter++;
-                const firstName = firstNames[Math.floor(Math.random() * firstNames.length)];
-                const lastName = lastNames[Math.floor(Math.random() * lastNames.length)];
-                const entryDate = getRandomDateInYear(config.year);
+                const firstName = firstNames[nameIndex % firstNames.length];
+                const lastName = lastNames[Math.floor(nameIndex / firstNames.length) % lastNames.length];
+                nameIndex++;
 
-                // Determine status based on counts
-                // We need to ensure we exactly hit the target counts for seminar and baptized
-                // Logic: The first N people get seminar, the first M people get baptized
+                // Deterministic date generation
+                // 2025: compress into Jan-Nov, weighted towards autumn
+                // 2024 & 2023: spread across year, weighted towards H2
+                let entryMonth: number;
+                if (config.year === 2025) {
+                    // Compress into 0-10 (Jan-Nov), weighted towards 8-10 (Sep-Nov)
+                    const monthWeights = [1, 1, 1, 1, 2, 2, 3, 4, 5, 6, 5]; // Nov has index 10
+                    const totalWeight = monthWeights.reduce((a, b) => a + b, 0);
+                    let rand = (id * 17 + i * 13) % totalWeight; // Deterministic "random"
+                    entryMonth = 0;
+                    for (let m = 0; m < monthWeights.length; m++) {
+                        if (rand < monthWeights[m]) {
+                            entryMonth = m;
+                            break;
+                        }
+                        rand -= monthWeights[m];
+                    }
+                } else {
+                    // 2023/2024: months 0-11, weighted towards 6-11 (Jul-Dec)
+                    entryMonth = ((id * 7 + i * 11) % 12);
+                    if (entryMonth < 6 && ((id + i) % 3) !== 0) {
+                        entryMonth += 6; // 66% chance to be in H2
+                    }
+                }
+
+                // Determine who gets seminar/baptism (first N people)
                 const getsSeminar = i < config.seminar;
                 const getsBaptized = i < config.baptized;
 
-                // Dates must be sequential: Entry -> Seminar -> Baptism
-                let seminarDate = null;
-                let baptismDate = null;
-
-                if (getsSeminar) {
-                    const d = new Date(entryDate);
-                    d.setDate(d.getDate() + Math.floor(Math.random() * 30) + 14); // 2-6 weeks later
-                    seminarDate = d.toISOString().split('T')[0];
-                }
+                let entryDate: Date;
+                let seminarDate: string | null = null;
+                let baptismDate: string | null = null;
 
                 if (getsBaptized) {
-                    const d = new Date(seminarDate!); // Seminar date is guaranteed if getsBaptized is true
-                    d.setDate(d.getDate() + Math.floor(Math.random() * 60) + 14); // 2-10 weeks later
-                    baptismDate = d.toISOString().split('T')[0];
+                    // BACKWARDS CALCULATION to prevent year drift
+                    // 1. First: Pick baptism date within the target year
+                    let baptismMonth: number;
+                    if (config.year === 2025) {
+                        // 2025: Between Jan-Nov (0-10)
+                        baptismMonth = ((id * 11 + i * 7) % 11);
+                    } else {
+                        // 2023/2024: Spread across year
+                        baptismMonth = ((id * 7 + i * 11) % 12);
+                    }
+                    const baptismDay = ((id * 13 + i * 17) % 28) + 1;
+                    const baptismD = new Date(config.year, baptismMonth, Math.min(baptismDay, 28));
+                    const finalBaptismDate = baptismD > TODAY ? new Date(TODAY.getTime() - 86400000) : baptismD;
+                    baptismDate = finalBaptismDate.toISOString().split('T')[0];
+
+                    // 2. Then: Seminar 2-6 weeks BEFORE baptism
+                    const seminarDaysBefore = 14 + ((id * 3) % 28); // 2-6 weeks
+                    const seminarD = new Date(finalBaptismDate.getTime() - seminarDaysBefore * 86400000);
+                    seminarDate = seminarD.toISOString().split('T')[0];
+
+                    // 3. Finally: Entry 2-6 weeks BEFORE seminar
+                    const entryDaysBefore = 14 + ((id * 5) % 28); // 2-6 weeks
+                    entryDate = new Date(seminarD.getTime() - entryDaysBefore * 86400000);
+
+                    // Safety: Ensure entry doesn't drift into previous year
+                    if (entryDate.getFullYear() < config.year) {
+                        // Compress: move entry to early in target year
+                        entryDate = new Date(config.year, 0, ((id * 3 + i * 5) % 28) + 1);
+                    }
+                } else if (getsSeminar) {
+                    // Has seminar but no baptism
+                    // Pick seminar date in target year
+                    const seminarMonth = ((id * 7 + i * 11) % 12);
+                    const seminarDay = ((id * 13 + i * 17) % 28) + 1;
+                    const seminarD = new Date(config.year, seminarMonth, Math.min(seminarDay, 28));
+                    const finalSeminarDate = seminarD > TODAY ? new Date(TODAY.getTime() - 86400000 * 3) : seminarD;
+                    seminarDate = finalSeminarDate.toISOString().split('T')[0];
+
+                    // Entry 2-6 weeks before seminar
+                    const entryDaysBefore = 14 + ((id * 5) % 28);
+                    entryDate = new Date(finalSeminarDate.getTime() - entryDaysBefore * 86400000);
+
+                    // Safety check
+                    if (entryDate.getFullYear() < config.year) {
+                        entryDate = new Date(config.year, 0, ((id * 3 + i * 5) % 28) + 1);
+                    }
+                } else {
+                    // Only interested, no seminar
+                    // Pick entry date in target year
+                    let entryMonth: number;
+                    if (config.year === 2025) {
+                        entryMonth = ((id * 11 + i * 7) % 11); // 0-10 (Jan-Nov)
+                    } else {
+                        entryMonth = ((id * 7 + i * 11) % 12);
+                    }
+                    const entryDay = ((id * 5 + i * 7) % 28) + 1;
+                    entryDate = new Date(config.year, entryMonth, Math.min(entryDay, 28));
+
+                    // Ensure not after TODAY
+                    if (entryDate > TODAY) {
+                        entryDate = new Date(TODAY.getTime() - 86400000 * 7);
+                    }
                 }
 
                 const person: BaptizoPerson = {
@@ -113,12 +178,12 @@ export class MockDataProvider implements DataProvider {
                     firstName,
                     lastName,
                     status: 'active',
-                    entry_date: entryDate,
+                    entry_date: entryDate.toISOString().split('T')[0],
                     fields: {
                         seminar_besucht_am: seminarDate,
                         getauft_am: baptismDate,
-                        urkunde_ueberreicht: getsBaptized ? Math.random() > 0.1 : false, // 90% have certificate
-                        in_gemeinde_integriert: getsBaptized ? Math.random() > 0.2 : false, // 80% integrated
+                        urkunde_ueberreicht: false, // Will be set later
+                        in_gemeinde_integriert: false, // Will be set later
                     },
                     imageUrl: `https://api.dicebear.com/7.x/avataaars/svg?seed=${id}`,
                 };
@@ -126,10 +191,40 @@ export class MockDataProvider implements DataProvider {
                 // Add to correct group
                 if (getsBaptized) {
                     this.groups[1].members.push(person);
+                    allBaptized.push(person);
                 } else {
                     this.groups[0].members.push(person);
                 }
             }
+        });
+
+        // Widget Logic: Certificates and Integration
+        // Rule: ALL baptized get certificate EXCEPT the very last one in 2025
+        allBaptized.sort((a, b) => {
+            const dateA = new Date(a.fields.getauft_am!).getTime();
+            const dateB = new Date(b.fields.getauft_am!).getTime();
+            return dateA - dateB;
+        });
+
+        const lastBaptized2025 = allBaptized
+            .filter(p => p.fields.getauft_am?.startsWith('2025'))
+            .sort((a, b) => new Date(b.fields.getauft_am!).getTime() - new Date(a.fields.getauft_am!).getTime())[0];
+
+        allBaptized.forEach(person => {
+            // Certificate: all true except last 2025 baptism
+            person.fields.urkunde_ueberreicht = person.id !== lastBaptized2025?.id;
+        });
+
+        // Integration: ~4 people missing integration (deterministic selection)
+        const integrationMissing = [
+            allBaptized[2],   // 3rd person
+            allBaptized[7],   // 8th person
+            allBaptized[15],  // 16th person
+            allBaptized[28]   // 29th person (if exists)
+        ].filter(p => p !== undefined);
+
+        allBaptized.forEach(person => {
+            person.fields.in_gemeinde_integriert = !integrationMissing.includes(person);
         });
     }
 

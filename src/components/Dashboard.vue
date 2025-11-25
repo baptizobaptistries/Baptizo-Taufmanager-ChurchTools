@@ -549,31 +549,34 @@ const chartData = computed(() => {
       const semData = new Array(12).fill(0);
       const baptData = new Array(12).fill(0);
       
-      const intGroup = groups.value.find(g => g.id === 100);
-      if (intGroup) {
-        intGroup.members.forEach(m => {
-          if (m.entry_date) {
-            const d = new Date(m.entry_date);
-            if (d.getFullYear() === year) {
-              intData[d.getMonth()]++;
-              if (m.fields.seminar_besucht_am) {
-                const sd = new Date(m.fields.seminar_besucht_am);
-                if (sd.getFullYear() === year) semData[sd.getMonth()]++;
-              }
+      // Count from ALL persons in BOTH groups (single source of truth)
+      groups.value.forEach(group => {
+        group.members.forEach(person => {
+          // Count Interessenten: based on entry_date
+          if (person.entry_date) {
+            const entryDate = new Date(person.entry_date);
+            if (entryDate.getFullYear() === year) {
+              intData[entryDate.getMonth()]++;
+            }
+          }
+          
+          // Count Seminare: based on seminar_besucht_am
+          if (person.fields.seminar_besucht_am) {
+            const seminarDate = new Date(person.fields.seminar_besucht_am);
+            if (seminarDate.getFullYear() === year) {
+              semData[seminarDate.getMonth()]++;
+            }
+          }
+          
+          // Count Taufen: based on getauft_am
+          if (person.fields.getauft_am) {
+            const baptismDate = new Date(person.fields.getauft_am);
+            if (baptismDate.getFullYear() === year) {
+              baptData[baptismDate.getMonth()]++;
             }
           }
         });
-      }
-      
-      const baptGroup =groups.value.find(g => g.id === 101);
-      if (baptGroup) {
-        baptGroup.members.forEach(m => {
-          if (m.fields.getauft_am) {
-            const d = new Date(m.fields.getauft_am);
-            if (d.getFullYear() === year) baptData[d.getMonth()]++;
-          }
-        });
-      }
+      });
       
       if (visibleSeries.value.interessenten) {
         datasets.push({
@@ -586,7 +589,7 @@ const chartData = computed(() => {
       }
       if (visibleSeries.value.seminare) {
         datasets.push({
-          label: `Seminare ${year}`,
+          label: `Seminarteilnehmer ${year}`,
           data: semData,
           borderColor: `rgba(115, 131, 178, ${opacity})`,
           backgroundColor: `rgba(115, 131, 178, ${opacity * 0.1})`,
@@ -595,7 +598,7 @@ const chartData = computed(() => {
       }
       if (visibleSeries.value.taufen) {
         datasets.push({
-          label: `Taufen ${year}`,
+          label: `Getaufte ${year}`,
           data: baptData,
           borderColor: `rgba(255, 159, 67, ${opacity})`,
           backgroundColor: `rgba(255, 159, 67, ${opacity * 0.1})`,
@@ -608,70 +611,99 @@ const chartData = computed(() => {
   }
 });
 
-// Dynamic KPIs
+// Dynamic KPIs (Event-Based Logic)
 const kpiInterested = computed(() => {
   let count = 0;
-  const intGroup = groups.value.find(g => g.id === 100);
-  if (!intGroup) return 0;
+  
+  // Determine time range based on mode
+  let startDate: Date, endDate: Date;
   
   if (chartMode.value === 'rolling') {
     const now = new Date();
-    const startDate = new Date(now.getFullYear(), now.getMonth() - rollingMonths.value + 1, 1);
-    intGroup.members.forEach(m => {
-      if (m.entry_date && new Date(m.entry_date) >= startDate) count++;
-    });
+    startDate = new Date(now.getFullYear(), now.getMonth() - rollingMonths.value + 1, 1);
+    endDate = now;
   } else {
-    intGroup.members.forEach(m => {
-      if (m.entry_date) {
-        const year = new Date(m.entry_date).getFullYear();
-        if (selectedYears.value.includes(year)) count++;
+    // Years mode: get min and max from selected years
+    const years = [...selectedYears.value].sort();
+    startDate = new Date(years[0], 0, 1);
+    endDate = new Date(years[years.length - 1], 11, 31);
+  }
+  
+  // Count ALL persons whose entry_date is in range (from both groups)
+  groups.value.forEach(group => {
+    group.members.forEach(person => {
+      if (person.entry_date) {
+        const entryDate = new Date(person.entry_date);
+        if (entryDate >= startDate && entryDate <= endDate) {
+          count++;
+        }
       }
     });
-  }
+  });
+  
   return count;
 });
 
 const kpiSeminars = computed(() => {
   let count = 0;
-  const intGroup = groups.value.find(g => g.id === 100);
-  if (!intGroup) return 0;
+  
+  // Determine time range
+  let startDate: Date, endDate: Date;
   
   if (chartMode.value === 'rolling') {
     const now = new Date();
-    const startDate = new Date(now.getFullYear(), now.getMonth() - rollingMonths.value + 1, 1);
-    intGroup.members.forEach(m => {
-      if (m.fields.seminar_besucht_am && new Date(m.fields.seminar_besucht_am) >= startDate) count++;
-    });
+    startDate = new Date(now.getFullYear(), now.getMonth() - rollingMonths.value + 1, 1);
+    endDate = now;
   } else {
-    intGroup.members.forEach(m => {
-      if (m.fields.seminar_besucht_am) {
-        const year = new Date(m.fields.seminar_besucht_am).getFullYear();
-        if (selectedYears.value.includes(year)) count++;
+    const years = [...selectedYears.value].sort();
+    startDate = new Date(years[0], 0, 1);
+    endDate = new Date(years[years.length - 1], 11, 31);
+  }
+  
+  // Count ALL persons whose seminar_besucht_am is in range (from both groups)
+  groups.value.forEach(group => {
+    group.members.forEach(person => {
+      if (person.fields.seminar_besucht_am) {
+        const seminarDate = new Date(person.fields.seminar_besucht_am);
+        if (seminarDate >= startDate && seminarDate <= endDate) {
+          count++;
+        }
       }
     });
-  }
+  });
+  
   return count;
 });
 
 const kpiBaptisms = computed(() => {
   let count = 0;
-  const baptGroup = groups.value.find(g => g.id === 101);
-  if (!baptGroup) return 0;
+  
+  // Determine time range
+  let startDate: Date, endDate: Date;
   
   if (chartMode.value === 'rolling') {
     const now = new Date();
-    const startDate = new Date(now.getFullYear(), now.getMonth() - rollingMonths.value + 1, 1);
-    baptGroup.members.forEach(m => {
-      if (m.fields.getauft_am && new Date(m.fields.getauft_am) >= startDate) count++;
-    });
+    startDate = new Date(now.getFullYear(), now.getMonth() - rollingMonths.value + 1, 1);
+    endDate = now;
   } else {
-    baptGroup.members.forEach(m => {
-      if (m.fields.getauft_am) {
-        const year = new Date(m.fields.getauft_am).getFullYear();
-        if (selectedYears.value.includes(year)) count++;
+    const years = [...selectedYears.value].sort();
+    startDate = new Date(years[0], 0, 1);
+    endDate = new Date(years[years.length - 1], 11, 31);
+  }
+  
+  // Count ALL persons whose getauft_am is in range (typically in baptized group)
+  const baptGroup = groups.value.find(g => g.id === 101);
+  if (baptGroup) {
+    baptGroup.members.forEach(person => {
+      if (person.fields.getauft_am) {
+        const baptismDate = new Date(person.fields.getauft_am);
+        if (baptismDate >= startDate && baptismDate <= endDate) {
+          count++;
+        }
       }
     });
   }
+  
   return count;
 });
 
@@ -725,7 +757,13 @@ const filteredPersons = computed(() => {
   return list.sort((a, b) => {
     const dateA = a.entry_date ? new Date(a.entry_date).getTime() : 0;
     const dateB = b.entry_date ? new Date(b.entry_date).getTime() : 0;
-    return dateA - dateB;
+    
+    // Smart Sort: Focus (problems) = ASC (Oldest first), Others = DESC (Newest first)
+    if (peopleFilter.value === 'problems') {
+      return dateA - dateB;
+    } else {
+      return dateB - dateA;
+    }
   });
 });
 
@@ -954,7 +992,7 @@ onMounted(() => loadData());
 .chart-legend {
   display: flex;
   justify-content: center;
-  gap: 1.5rem;
+  gap: 0.5rem;
   margin-top: 1rem;
   padding-top: 1rem;
   border-top: 1px solid #444;
@@ -1100,7 +1138,7 @@ onMounted(() => loadData());
 
 /* People Content */
 .people-content {
-  padding: 2rem;
+  padding: 0 20px;
   max-width: 1400px;
   margin: 0 auto;
 }
@@ -1114,7 +1152,7 @@ onMounted(() => loadData());
 
 .management-buttons {
   display: flex;
-  gap: 1rem;
+  gap: 0.5rem;
 }
 
 .filter-bar {
@@ -1126,13 +1164,14 @@ onMounted(() => loadData());
 }
 
 .filter-bar button {
-  background: none;
+  background: #444;
   border: none;
-  color: #aaa;
+  color: #fff;
   padding: 0.5rem 1rem;
   border-radius: 4px;
   cursor: pointer;
   font-size: 0.9rem;
+  transition: all 0.2s;
 }
 
 .filter-bar button.active {
@@ -1155,6 +1194,10 @@ onMounted(() => loadData());
   padding: 1rem;
   text-align: left;
   border-bottom: 1px solid #444;
+}
+
+.people-table tr:last-child td {
+  border-bottom: none;
 }
 
 /* Fixed column widths for stability */
