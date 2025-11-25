@@ -894,7 +894,7 @@ onMounted(() => loadData());
   max-width: 1400px;
   width: 100%;
   margin: 0 auto;
-  padding: 2rem 20px;
+  padding: 2rem 20px 0 20px;
   display: flex;
   flex-direction: column;
   gap: 2rem;
@@ -1067,7 +1067,7 @@ onMounted(() => loadData());
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
   gap: 1.5rem;
-  margin-bottom: var(--master-gap);
+  margin-bottom: 0;
 }
 
 .list-card {
@@ -1147,7 +1147,9 @@ onMounted(() => loadData());
   display: flex;
   justify-content: space-between;
   align-items: center;
+  margin-top: 1.5rem;
   margin-bottom: 1.5rem;
+
 }
 
 .management-buttons {
