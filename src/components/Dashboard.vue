@@ -1045,7 +1045,7 @@ onMounted(() => loadData());
   align-items: center;
   margin-bottom: 1rem;
   padding-bottom: 0.5rem;
-  border-bottom: 1px solid #444;
+  border-bottom: none;
 }
 
 .list-header h4 {

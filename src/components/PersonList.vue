@@ -58,7 +58,7 @@ const handleClick = (person: BaptizoPerson) => {
   display: flex;
   align-items: center;
   padding: 0.5rem 0;
-  border-bottom: 1px solid var(--ct-border-color, #eee);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   transition: background-color 0.2s;
 }
 .person-item.clickable {
