@@ -469,35 +469,38 @@ const chartData = computed(() => {
     const now = new Date();
     for (let i = rollingMonths.value - 1; i >= 0; i--) {
       const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      labels.push(d.toLocaleString('de-DE', { month: 'short', year: '2-digit' }));
+      labels.push(d.toLocaleString('de-DE', { month: 'long', year: '2-digit' }));
       
       let intCount = 0, semCount = 0, baptCount = 0;
       
-      const intGroup = groups.value.find(g => g.id === 100);
-      if (intGroup) {
-        intGroup.members.forEach(m => {
+      
+      groups.value.forEach(group => {
+        group.members.forEach(m => {
+          // 1. Interessenten (Entry Date)
           if (m.entry_date) {
             const ed = new Date(m.entry_date);
             if (ed.getMonth() === d.getMonth() && ed.getFullYear() === d.getFullYear()) {
               intCount++;
-              if (m.fields.seminar_besucht_am) {
-                const sd = new Date(m.fields.seminar_besucht_am);
-                if (sd.getMonth() === d.getMonth() && sd.getFullYear() === d.getFullYear()) semCount++;
-              }
+            }
+          }
+          
+          // 2. Seminare (Seminar Date) - Independent check!
+          if (m.fields.seminar_besucht_am) {
+            const sd = new Date(m.fields.seminar_besucht_am);
+            if (sd.getMonth() === d.getMonth() && sd.getFullYear() === d.getFullYear()) {
+              semCount++;
+            }
+          }
+
+          // 3. Taufen (Baptism Date)
+          if (m.fields.getauft_am) {
+            const bd = new Date(m.fields.getauft_am);
+            if (bd.getMonth() === d.getMonth() && bd.getFullYear() === d.getFullYear()) {
+              baptCount++;
             }
           }
         });
-      }
-      
-      const baptGroup = groups.value.find(g => g.id === 101);
-      if (baptGroup) {
-        baptGroup.members.forEach(m => {
-          if (m.fields.getauft_am) {
-            const bd = new Date(m.fields.getauft_am);
-            if (bd.getMonth() === d.getMonth() && bd.getFullYear() === d.getFullYear()) baptCount++;
-          }
-        });
-      }
+      });
       
       intData.push(intCount);
       semData.push(semCount);
@@ -509,6 +512,7 @@ const chartData = computed(() => {
         label: 'Interessenten',
         data: intData,
         borderColor: '#92C9D6',
+        solidColor: '#92C9D6',
         backgroundColor: 'rgba(146, 201, 214, 0.1)',
         tension: 0.4
       });
@@ -518,6 +522,7 @@ const chartData = computed(() => {
         label: 'Seminare',
         data: semData,
         borderColor: '#7383B2',
+        solidColor: '#7383B2',
         backgroundColor: 'rgba(115, 131, 178, 0.1)',
         tension: 0.4
       });
@@ -527,6 +532,7 @@ const chartData = computed(() => {
         label: 'Taufen',
         data: baptData,
         borderColor: '#FF9F43',
+        solidColor: '#FF9F43',
         backgroundColor: 'rgba(255, 159, 67, 0.1)',
         tension: 0.4
       });
@@ -535,7 +541,7 @@ const chartData = computed(() => {
     return { labels, datasets };
     
   } else {
-    const months = ['Jan', 'Feb', 'Mär', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dez'];
+    const months = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'];
     const sortedYears = [...selectedYears.value].sort((a, b) => b - a);
     
     sortedYears.forEach((year, idx) => {
@@ -580,27 +586,30 @@ const chartData = computed(() => {
       
       if (visibleSeries.value.interessenten) {
         datasets.push({
-          label: `Interessenten ${year}`,
+          label: `Interessenten '${year.toString().slice(-2)}`,
           data: intData,
           borderColor: `rgba(146, 201, 214, ${opacity})`,
+          solidColor: '#92C9D6',
           backgroundColor: `rgba(146, 201, 214, ${opacity * 0.1})`,
           tension: 0.4
         });
       }
       if (visibleSeries.value.seminare) {
         datasets.push({
-          label: `Seminarteilnehmer ${year}`,
+          label: `Seminarteilnehmer '${year.toString().slice(-2)}`,
           data: semData,
           borderColor: `rgba(115, 131, 178, ${opacity})`,
+          solidColor: '#7383B2',
           backgroundColor: `rgba(115, 131, 178, ${opacity * 0.1})`,
           tension: 0.4
         });
       }
       if (visibleSeries.value.taufen) {
         datasets.push({
-          label: `Getaufte ${year}`,
+          label: `Taufen '${year.toString().slice(-2)}`,
           data: baptData,
           borderColor: `rgba(255, 159, 67, ${opacity})`,
+          solidColor: '#FF9F43',
           backgroundColor: `rgba(255, 159, 67, ${opacity * 0.1})`,
           tension: 0.4
         });
