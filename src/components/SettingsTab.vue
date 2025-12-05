@@ -30,7 +30,7 @@
           <!-- LEFT COLUMN: Taufseminar Mails -->
           <div class="template-column">
             <div class="column-header">
-              <h4>Taufseminar Mails</h4>
+              <span class="category-badge seminar">SEMINAR</span>
               <button @click="addTemplate('seminar')" class="add-btn">+ Hinzufügen</button>
             </div>
             <div class="template-list">
@@ -72,7 +72,7 @@
           <!-- RIGHT COLUMN: Taufe Mails -->
           <div class="template-column">
             <div class="column-header">
-              <h4>Taufe Mails</h4>
+              <span class="category-badge baptism">TAUFE</span>
               <button @click="addTemplate('baptism')" class="add-btn">+ Hinzufügen</button>
             </div>
             <div class="template-list">
@@ -245,7 +245,7 @@ const toggleTemplate = (id: string) => {
 .settings-header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: center; /* CRITICAL: vertical center alignment */
   margin-top: 1.5rem;
   margin-bottom: 1.5rem;
 }
@@ -333,10 +333,25 @@ const toggleTemplate = (id: string) => {
   margin-bottom: 1rem;
 }
 
-.column-header h4 {
-  margin: 0;
-  color: #92C9D6;
-  font-size: 1.1rem;
+/* Category Badges (Event-Style) */
+.category-badge {
+  display: inline-block;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-weight: bold;
+  text-transform: uppercase;
+  font-size: 0.8rem;
+  letter-spacing: 0.05em;
+}
+
+.category-badge.seminar {
+  background: rgba(115, 131, 178, 0.2);
+  color: #7383B2;
+}
+
+.category-badge.baptism {
+  background: rgba(255, 159, 67, 0.2);
+  color: #FF9F43;
 }
 
 .add-btn {
