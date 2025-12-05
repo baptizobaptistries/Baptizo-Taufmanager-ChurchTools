@@ -1,77 +1,140 @@
 <template>
   <div class="settings-container">
-    <!-- New Header: Sub-nav left, Save button right -->
+    <!-- Header (Pixel-Perfect Match to Personen/Termine) -->
     <div class="settings-header">
-      <div class="settings-tabs">
+      <div class="filter-bar">
         <button 
-          v-for="tab in tabs" 
-          :key="tab.id"
-          class="tab-btn"
-          :class="{ active: currentTab === tab.id }"
-          @click="currentTab = tab.id"
-        >
-          {{ tab.label }}
-        </button>
+          @click="currentTab = 'emails'" 
+          :class="{ active: currentTab === 'emails' }"
+        >E-Mail Vorlagen</button>
+        <button 
+          @click="currentTab = 'fields'" 
+          :class="{ active: currentTab === 'fields' }"
+        >Feldbezeichnungen</button>
+        <button 
+          @click="currentTab = 'general'" 
+          :class="{ active: currentTab === 'general' }"
+        >Anmeldeformular</button>
       </div>
       
-      <button @click="saveSettings" class="save-btn" :disabled="saving">
-        {{ saving ? 'Speichert...' : 'Einstellungen speichern' }}
+      <button @click="saveSettings" class="ct-button ct-button--primary" :disabled="saving">
+        <span v-if="!saving">Einstellungen speichern</span>
+        <span v-else>Speichert...</span>
       </button>
     </div>
 
     <div class="settings-content">
-      <!-- Tab 1: Allgemein -->
-      <div v-if="currentTab === 'general'" class="tab-pane">
-        <section class="settings-section">
-          <h3>Allgemeine Einstellungen</h3>
-          
-          <div class="form-group">
-            <label>Link zum Anmeldeformular</label>
-            <input v-model="localSettings.registrationFormUrl" type="text" placeholder="https://..." />
-            <p class="help-text">URL zum externen Anmeldeformular (z.B. ChurchTools oder Typeform)</p>
-          </div>
-        </section>
-      </div>
-
-      <!-- Tab 2: E-Mail Vorlagen -->
+      <!-- Tab 1: E-Mail Vorlagen (2-Column Grid) -->
       <div v-if="currentTab === 'emails'" class="tab-pane">
-        <section class="settings-section">
-          <h3>E-Mail Vorlagen</h3>
-          <div class="email-templates">
-            <div v-for="template in localSettings.emailTemplates" :key="template.id" class="template-card">
-              <div class="template-header" @click="toggleTemplate(template.id)">
-                <h4>{{ template.name }}</h4>
-                <span class="offset-badge">{{ template.daysOffset > 0 ? '+' : '' }}{{ template.daysOffset }} Tage</span>
-              </div>
-              <div v-if="expandedTemplate === template.id" class="template-body">
-                <div class="form-group">
-                  <label>Betreff</label>
-                  <input v-model="template.subject" type="text" />
+        <div class="email-templates-grid">
+          <!-- LEFT COLUMN: Taufseminar Mails -->
+          <div class="template-column">
+            <div class="column-header">
+              <h4>Taufseminar Mails</h4>
+              <button @click="addTemplate('seminar')" class="add-btn">+ Hinzufügen</button>
+            </div>
+            <div class="template-list">
+              <div v-for="template in seminarTemplates" :key="template.id" class="template-card">
+                <div class="template-header" @click="toggleTemplate(template.id)">
+                  <span>{{ template.name }}</span>
+                  <span class="offset-badge">{{ formatOffset(template) }}</span>
                 </div>
-                <div class="form-group">
-                  <label>Inhalt</label>
-                  <textarea v-model="template.body" rows="6"></textarea>
-                  <p class="help-text">Verfügbare Platzhalter: {name}, {uhrzeit}, {ort}, {leader}</p>
+                <div v-if="expandedTemplate === template.id" class="template-body">
+                  <div class="form-group">
+                    <label>Name</label>
+                    <input v-model="template.name" type="text" />
+                  </div>
+                  <div class="form-group timing-group">
+                    <label>Zeitpunkt</label>
+                    <div class="timing-input">
+                      <input v-model.number="template.daysOffset" type="number" min="0" />
+                      <select v-model="template.offsetType">
+                        <option value="before">Tage vor Event</option>
+                        <option value="after">Tage nach Event</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div class="form-group">
+                    <label>Betreff</label>
+                    <input v-model="template.subject" type="text" />
+                  </div>
+                  <div class="form-group">
+                    <label>Inhalt</label>
+                    <textarea v-model="template.body" rows="6"></textarea>
+                    <p class="help-text">Verfügbare Platzhalter: {name}, {uhrzeit}, {ort}, {leader}</p>
+                  </div>
+                  <button @click="deleteTemplate(template.id)" class="delete-btn">Löschen</button>
                 </div>
               </div>
             </div>
           </div>
-        </section>
+
+          <!-- RIGHT COLUMN: Taufe Mails -->
+          <div class="template-column">
+            <div class="column-header">
+              <h4>Taufe Mails</h4>
+              <button @click="addTemplate('baptism')" class="add-btn">+ Hinzufügen</button>
+            </div>
+            <div class="template-list">
+              <div v-for="template in baptismTemplates" :key="template.id" class="template-card">
+                <div class="template-header" @click="toggleTemplate(template.id)">
+                  <span>{{ template.name }}</span>
+                  <span class="offset-badge">{{ formatOffset(template) }}</span>
+                </div>
+                <div v-if="expandedTemplate === template.id" class="template-body">
+                  <div class="form-group">
+                    <label>Name</label>
+                    <input v-model="template.name" type="text" />
+                  </div>
+                  <div class="form-group timing-group">
+                    <label>Zeitpunkt</label>
+                    <div class="timing-input">
+                      <input v-model.number="template.daysOffset" type="number" min="0" />
+                      <select v-model="template.offsetType">
+                        <option value="before">Tage vor Event</option>
+                        <option value="after">Tage nach Event</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div class="form-group">
+                    <label>Betreff</label>
+                    <input v-model="template.subject" type="text" />
+                  </div>
+                  <div class="form-group">
+                    <label>Inhalt</label>
+                    <textarea v-model="template.body" rows="6"></textarea>
+                    <p class="help-text">Verfügbare Platzhalter: {name}, {uhrzeit}, {ort}, {leader}</p>
+                  </div>
+                  <button @click="deleteTemplate(template.id)" class="delete-btn">Löschen</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
-      <!-- Tab 3: Custom Fields -->
+      <!-- Tab 2: Feldbezeichnungen -->
       <div v-if="currentTab === 'fields'" class="tab-pane">
-        <section class="settings-section">
-          <h3>Feld-Bezeichnungen</h3>
+        <div class="fields-content">
           <p class="intro-text">Hier können die Bezeichnungen der Status-Flags angepasst werden.</p>
-          
           <div class="fields-list">
             <div v-for="field in localSettings.customFieldLabels" :key="field.key" class="form-group">
               <label>{{ field.key }} (Intern)</label>
               <input v-model="field.label" type="text" />
             </div>
           </div>
-        </section>
+        </div>
+      </div>
+
+      <!-- Tab 3: Anmeldeformular -->
+      <div v-if="currentTab === 'general'" class="tab-pane">
+        <div class="general-content">
+          <div class="form-group">
+            <label>Link zum Anmeldeformular</label>
+            <input v-model="localSettings.registrationFormUrl" type="text" placeholder="https://..." />
+            <p class="help-text">URL zum externen Anmeldeformular (z.B. ChurchTools oder Typeform)</p>
+          </div>
+        </div>
       </div>
     </div>
     
@@ -80,9 +143,19 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue';
+import { ref, watch, computed } from 'vue';
 import type { BaptizoSettings } from '../types/baptizo-settings';
 import { MockDataProvider } from '../services/mock-data-provider';
+
+interface EmailTemplate {
+  id: string;
+  name: string;
+  subject: string;
+  body: string;
+  daysOffset: number;
+  offsetType: 'before' | 'after';
+  category: 'seminar' | 'baptism';
+}
 
 const props = defineProps<{
   settings: BaptizoSettings;
@@ -94,22 +167,58 @@ const emit = defineEmits<{
 
 const provider = new MockDataProvider();
 const localSettings = ref<BaptizoSettings>({ ...props.settings });
-const currentTab = ref('general');
+const currentTab = ref('emails');
 const expandedTemplate = ref<string | null>(null);
 const saving = ref(false);
 const saveMessage = ref('');
-
-const tabs = [
-  { id: 'general', label: 'Allgemein' },
-  { id: 'emails', label: 'E-Mail Vorlagen' },
-  { id: 'fields', label: 'Custom Fields' }
-];
 
 // Watch for external changes
 watch(() => props.settings, (newSettings) => {
   localSettings.value = { ...newSettings };
 }, { deep: true });
 
+// Computed: Filter templates by category
+const seminarTemplates = computed(() => 
+  (localSettings.value.emailTemplates as EmailTemplate[]).filter(t => t.category === 'seminar')
+);
+
+const baptismTemplates = computed(() => 
+  (localSettings.value.emailTemplates as EmailTemplate[]).filter(t => t.category === 'baptism')
+);
+
+// Format offset for display
+const formatOffset = (template: EmailTemplate) => {
+  const prefix = template.offsetType === 'before' ? '-' : '+';
+  return `${prefix}${template.daysOffset}`;
+};
+
+// Add new template
+const addTemplate = (category: 'seminar' | 'baptism') => {
+  const newTemplate: EmailTemplate = {
+    id: Date.now().toString(),
+    name: 'Neue Vorlage',
+    subject: '',
+    body: '',
+    daysOffset: 0,
+    offsetType: 'before',
+    category
+  };
+  (localSettings.value.emailTemplates as EmailTemplate[]).push(newTemplate);
+  expandedTemplate.value = newTemplate.id;
+};
+
+// Delete template
+const deleteTemplate = (id: string) => {
+  const index = (localSettings.value.emailTemplates as EmailTemplate[]).findIndex(t => t.id === id);
+  if (index !== -1) {
+    (localSettings.value.emailTemplates as EmailTemplate[]).splice(index, 1);
+    if (expandedTemplate.value === id) {
+      expandedTemplate.value = null;
+    }
+  }
+};
+
+// Save settings
 const saveSettings = async () => {
   saving.value = true;
   await provider.updateSettings(localSettings.value);
@@ -119,6 +228,7 @@ const saveSettings = async () => {
   setTimeout(() => saveMessage.value = '', 3000);
 };
 
+// Toggle template expansion
 const toggleTemplate = (id: string) => {
   expandedTemplate.value = expandedTemplate.value === id ? null : id;
 };
@@ -131,7 +241,7 @@ const toggleTemplate = (id: string) => {
   padding: 0 20px;
 }
 
-/* New Header Layout */
+/* Header (Matching Personen/Termine) */
 .settings-header {
   display: flex;
   justify-content: space-between;
@@ -140,7 +250,7 @@ const toggleTemplate = (id: string) => {
   margin-bottom: 1.5rem;
 }
 
-.settings-tabs {
+.filter-bar {
   display: flex;
   gap: 0.5rem;
   background: #1a1a1a;
@@ -148,41 +258,44 @@ const toggleTemplate = (id: string) => {
   border-radius: 6px;
 }
 
-.tab-btn {
+.filter-bar button {
   background: #444;
   border: none;
   color: #fff;
-  font-size: 0.9rem;
-  cursor: pointer;
   padding: 0.5rem 1rem;
   border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
   transition: all 0.2s;
 }
 
-.tab-btn.active {
+.filter-bar button.active {
   background: #3C3C5B;
   color: white;
   font-weight: bold;
 }
 
-/* Save Button */
-.save-btn {
-  background: #92C9D6;
-  color: #3C3C5B;
-  border: none;
+/* Primary Button (Save) */
+.ct-button {
   padding: 0.75rem 1.5rem;
   border-radius: 4px;
   cursor: pointer;
+  border: none;
   font-weight: bold;
   font-size: 1rem;
   transition: all 0.2s;
 }
 
-.save-btn:hover {
+.ct-button--primary {
+  background: #92C9D6;
+  color: #3C3C5B;
+}
+
+.ct-button--primary:hover {
   background: #7ab8c5;
 }
 
-.save-btn:disabled {
+.ct-button:disabled {
   opacity: 0.7;
   cursor: not-allowed;
 }
@@ -192,26 +305,98 @@ const toggleTemplate = (id: string) => {
   margin-bottom: 2rem;
 }
 
-.settings-section {
-  background: #2a2a2a;
-  padding: 2rem;
-  border-radius: 8px;
-  margin-bottom: 2rem;
+.tab-pane {
+  animation: fadeIn 0.3s ease;
 }
 
-.settings-section h3 {
-  margin-top: 0;
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* 2-Column Email Templates Grid */
+.email-templates-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+}
+
+.template-column {
+  display: flex;
+  flex-direction: column;
+}
+
+.column-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.column-header h4 {
+  margin: 0;
   color: #92C9D6;
-  border-bottom: 1px solid #444;
-  padding-bottom: 1rem;
-  margin-bottom: 1.5rem;
+  font-size: 1.1rem;
 }
 
-.intro-text {
-  color: #aaa;
-  margin-bottom: 1.5rem;
+.add-btn {
+  background: none;
+  border: 1px dashed #444;
+  color: #92C9D6;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: all 0.2s;
 }
 
+.add-btn:hover {
+  border-color: #92C9D6;
+  background: rgba(146, 201, 214, 0.1);
+}
+
+/* Template Cards */
+.template-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.template-card {
+  background: #2a2a2a;
+  border: 1px solid #444;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.template-header {
+  padding: 0.75rem 1rem;
+  background: #333;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: background 0.2s;
+}
+
+.template-header:hover {
+  background: #3a3a3a;
+}
+
+.offset-badge {
+  background: #444;
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  font-family: monospace;
+}
+
+.template-body {
+  padding: 1rem;
+  border-top: 1px solid #444;
+}
+
+/* Form Groups */
 .form-group {
   margin-bottom: 1.5rem;
 }
@@ -221,9 +406,12 @@ const toggleTemplate = (id: string) => {
   margin-bottom: 0.5rem;
   color: #ccc;
   font-weight: 500;
+  font-size: 0.9rem;
 }
 
-.form-group input, .form-group textarea {
+.form-group input,
+.form-group textarea,
+.form-group select {
   width: 100%;
   padding: 0.75rem;
   background: #1a1a1a;
@@ -231,6 +419,11 @@ const toggleTemplate = (id: string) => {
   color: #fff;
   border-radius: 4px;
   font-family: inherit;
+  font-size: 0.95rem;
+}
+
+.form-group textarea {
+  resize: vertical;
 }
 
 .help-text {
@@ -239,39 +432,46 @@ const toggleTemplate = (id: string) => {
   margin-top: 0.5rem;
 }
 
-/* Email Templates */
-.template-card {
-  background: #222;
-  border: 1px solid #444;
-  border-radius: 4px;
-  margin-bottom: 1rem;
-  overflow: hidden;
+/* Timing Input Group */
+.timing-group .timing-input {
+  display: grid;
+  grid-template-columns: 100px 1fr;
+  gap: 0.5rem;
 }
 
-.template-header {
-  padding: 1rem;
-  background: #333;
+/* Delete Button */
+.delete-btn {
+  width: 100%;
+  background: #dc2626;
+  color: white;
+  border: none;
+  padding: 0.75rem;
+  border-radius: 4px;
   cursor: pointer;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+  font-weight: bold;
+  margin-top: 1rem;
+  transition: background 0.2s;
 }
 
-.template-header h4 {
-  margin: 0;
-  color: #fff;
+.delete-btn:hover {
+  background: #b91c1c;
 }
 
-.offset-badge {
-  background: #444;
-  padding: 0.2rem 0.5rem;
-  border-radius: 4px;
-  font-size: 0.8rem;
+/* Fields Content */
+.fields-content,
+.general-content {
+  max-width: 800px;
 }
 
-.template-body {
-  padding: 1rem;
-  border-top: 1px solid #444;
+.intro-text {
+  color: #aaa;
+  margin-bottom: 1.5rem;
+}
+
+.fields-list {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1.5rem;
 }
 
 /* Save Toast */
@@ -286,6 +486,7 @@ const toggleTemplate = (id: string) => {
   font-weight: bold;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
   animation: slideIn 0.3s ease-out;
+  z-index: 1000;
 }
 
 @keyframes slideIn {
