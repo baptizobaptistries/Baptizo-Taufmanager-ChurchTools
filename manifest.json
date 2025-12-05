@@ -11,14 +11,14 @@
     {
       "id": "main",
       "entryPoint": "main",
-      "title": "Baptizo Taufmanager",
-      "description": "Dashboard und Pool-Management"
+      "title": "Taufmanager",
+      "description": "Dashboard & Verwaltung"
     },
     {
       "id": "admin",
       "entryPoint": "admin",
-      "title": "Baptizo Einstellungen",
-      "description": "Konfiguration und Templates"
+      "title": "System",
+      "description": "Technischer Status"
     }
   ]
 }
