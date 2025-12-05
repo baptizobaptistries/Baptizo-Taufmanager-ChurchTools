@@ -13,6 +13,15 @@
             {{ campus.name }}
           </option>
         </select>
+        
+        <!-- Multi-Site Mode Toggle (Feature Preview) -->
+        <div class="multisite-toggle" @click="handleMultiSiteToggle">
+          <div class="toggle-switch" :class="{ active: multiSiteEnabled }">
+            <div class="toggle-knob"></div>
+          </div>
+          <label class="toggle-label">Multi-Site</label>
+        </div>
+        
         <button @click="openReportModal" class="ct-button ct-button--report">
           <span class="icon">📄</span> Report erstellen
         </button>
@@ -462,6 +471,21 @@ const visibleSeries = ref({ interessenten: true, seminare: true, taufen: true })
 // Filter State
 const timeFilter = ref('all');
 const peopleFilter = ref('all');
+
+// Multi-Site Mode Toggle (Feature Preview)
+const multiSiteEnabled = ref(false);
+
+const handleMultiSiteToggle = () => {
+  // First: Toggle ON (visual feedback)
+  multiSiteEnabled.value = true;
+  
+  // Then: Show alert after short delay
+  setTimeout(() => {
+    alert('🚧 Feature in Entwicklung');
+    // After alert dismissed: Toggle back OFF
+    multiSiteEnabled.value = false;
+  }, 200);
+};
 
 // FAQ Data for Help Tab
 const faqs = ref([
@@ -971,6 +995,65 @@ onMounted(() => loadData());
   align-items: center; 
 }
 
+/* Multi-Site Toggle (Feature Preview) */
+.multisite-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 1rem; /* Match ct-button exactly */
+  background: rgba(0, 0, 0, 0.3); /* Dark background */
+  border: 2px solid #92C9D6; /* Bright turquoise like Report button */
+  border-radius: 4px; /* Match ct-button */
+  transition: all 0.2s;
+  cursor: pointer; /* Make whole container clickable */
+}
+
+.multisite-toggle:hover {
+  border-color: #92C9D6;
+  background: rgba(146, 201, 214, 0.1); /* Same as Report button hover */
+}
+
+.toggle-label {
+  font-size: 0.85rem;
+  color: #fff; /* White for better contrast */
+  font-weight: 700; /* Bold like button text */
+}
+
+.toggle-switch {
+  position: relative;
+  width: 34px; /* Even smaller */
+  height: 18px; /* Even smaller */
+  background: #555;
+  border-radius: 9px; /* Match smaller size */
+  transition: background 0.3s;
+  flex-shrink: 0;
+  pointer-events: none; /* Don't intercept clicks - let parent handle */
+}
+
+.toggle-switch:hover {
+  background: #666;
+}
+
+.toggle-switch.active {
+  background: #7383B2;
+}
+
+.toggle-knob {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px; /* Even smaller */
+  height: 14px; /* Even smaller */
+  background: #ddd;
+  border-radius: 50%;
+  transition: all 0.3s;
+}
+
+.toggle-switch.active .toggle-knob {
+  left: 18px; /* Adjust for smaller size */
+  background: #fff;
+}
+
 .location-filter {
   padding: 0.5rem;
   border-radius: 4px;
@@ -993,6 +1076,7 @@ onMounted(() => loadData());
 .ct-button--primary {
   background-color: #92C9D6;
   color: #3C3C5B;
+  border: 2px solid #92C9D6; /* Turquoise border */
 }
 
 .ct-button--secondary {
@@ -1001,9 +1085,9 @@ onMounted(() => loadData());
 }
 
 .ct-button--report {
-  background-color: transparent;
+  background-color: rgba(0, 0, 0, 0.3); /* Dark background like multi-site */
   border: 2px solid #92C9D6;
-  color: #92C9D6;
+  color: #fff; /* White text like multi-site */
 }
 
 .ct-button--report:hover {
