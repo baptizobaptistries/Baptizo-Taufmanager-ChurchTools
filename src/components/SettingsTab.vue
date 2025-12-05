@@ -12,9 +12,9 @@
           :class="{ active: currentTab === 'fields' }"
         >Feldbezeichnungen</button>
         <button 
-          @click="currentTab = 'general'" 
-          :class="{ active: currentTab === 'general' }"
-        >Anmeldeformular</button>
+          @click="currentTab = 'links'" 
+          :class="{ active: currentTab === 'links' }"
+        >Links</button>
       </div>
       
       <button @click="saveSettings" class="ct-button ct-button--primary" :disabled="saving">
@@ -53,6 +53,12 @@
                         <option value="after">Tage nach Event</option>
                       </select>
                     </div>
+                  </div>
+                  <div class="form-group recipient-checkbox">
+                    <label>
+                      <input v-model="template.recipientType" type="checkbox" true-value="leader" false-value="participant" />
+                      Mail an Leiter (statt an Person)
+                    </label>
                   </div>
                   <div class="form-group">
                     <label>Betreff</label>
@@ -96,6 +102,12 @@
                       </select>
                     </div>
                   </div>
+                  <div class="form-group recipient-checkbox">
+                    <label>
+                      <input v-model="template.recipientType" type="checkbox" true-value="leader" false-value="participant" />
+                      Mail an Leiter (statt an Person)
+                    </label>
+                  </div>
                   <div class="form-group">
                     <label>Betreff</label>
                     <input v-model="template.subject" type="text" />
@@ -115,24 +127,59 @@
 
       <!-- Tab 2: Feldbezeichnungen -->
       <div v-if="currentTab === 'fields'" class="tab-pane">
-        <div class="fields-content">
-          <p class="intro-text">Hier können die Bezeichnungen der Status-Flags angepasst werden.</p>
-          <div class="fields-list">
-            <div v-for="field in localSettings.customFieldLabels" :key="field.key" class="form-group">
-              <label>{{ field.key }} (Intern)</label>
-              <input v-model="field.label" type="text" />
+        <div class="fields-grid">
+          <div v-for="field in localSettings.customFieldLabels" :key="field.key" class="field-card">
+            <div class="field-header">
+              <span class="field-key">{{ field.key }}</span>
+            </div>
+            <div class="form-group">
+              <label>Anzeigename</label>
+              <input v-model="field.label" type="text" placeholder="z.B. 'Seminar besucht'" />
             </div>
           </div>
         </div>
       </div>
 
-      <!-- Tab 3: Anmeldeformular -->
-      <div v-if="currentTab === 'general'" class="tab-pane">
-        <div class="general-content">
-          <div class="form-group">
-            <label>Link zum Anmeldeformular</label>
-            <input v-model="localSettings.registrationFormUrl" type="text" placeholder="https://..." />
-            <p class="help-text">URL zum externen Anmeldeformular (z.B. ChurchTools oder Typeform)</p>
+      <!-- Tab 3: Links -->
+      <div v-if="currentTab === 'links'" class="tab-pane">
+        <div class="links-grid">
+          <!-- Link 1: Anmeldeformular -->
+          <div class="link-card">
+            <div class="link-header">
+              <span class="link-icon">📋</span>
+              <h4>Anmeldeformular</h4>
+            </div>
+            <div class="form-group">
+              <label>URL</label>
+              <input v-model="localSettings.registrationFormUrl" type="url" placeholder="https://yourchurch.church.tools/..." />
+              <p class="help-text">Platzhalter in Mails: <code>{link_anmeldung}</code></p>
+            </div>
+          </div>
+
+          <!-- Link 2: Kleingruppen -->
+          <div class="link-card">
+            <div class="link-header">
+              <span class="link-icon">👥</span>
+              <h4>Kleingruppen</h4>
+            </div>
+            <div class="form-group">
+              <label>URL</label>
+              <input v-model="localSettings.smallGroupsUrl" type="url" placeholder="https://yourchurch.church.tools/smallgroups" />
+              <p class="help-text">Platzhalter in Mails: <code>{link_kleingruppen}</code></p>
+            </div>
+          </div>
+
+          <!-- Link 3: Taufinfo -->
+          <div class="link-card">
+            <div class="link-header">
+              <span class="link-icon">🌊</span>
+              <h4>Taufinfo & FAQ</h4>
+            </div>
+            <div class="form-group">
+              <label>URL</label>
+              <input v-model="localSettings.baptismInfoUrl" type="url" placeholder="https://yourchurch.de/taufe" />
+              <p class="help-text">Platzhalter in Mails: <code>{link_taufinfo}</code></p>
+            </div>
           </div>
         </div>
       </div>
@@ -425,6 +472,32 @@ const toggleTemplate = (id: string) => {
   font-size: 0.9rem;
 }
 
+/* Recipient Checkbox - Simple & Clean */
+.recipient-checkbox {
+  margin-bottom: 1.5rem;
+}
+
+.recipient-checkbox label {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  cursor: pointer;
+  font-weight: normal;
+  color: #ccc;
+}
+
+.recipient-checkbox input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+  cursor: pointer;
+  accent-color: #7383B2;
+  margin: 0;
+}
+
+.recipient-checkbox label:hover {
+  color: #fff;
+}
+
 .form-group input,
 .form-group textarea,
 .form-group select {
@@ -474,6 +547,133 @@ const toggleTemplate = (id: string) => {
 }
 
 /* Fields Content */
+.fields-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1.5rem;
+}
+
+.field-card {
+  background: #2a2a2a;
+  padding: 1.5rem;
+  border-radius: 8px;
+  transition: all 0.2s;
+}
+
+.field-card:hover {
+  background: #2f2f2f;
+}
+
+.field-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 1rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid #444;
+}
+
+.field-key {
+  font-weight: bold;
+  color: #92C9D6;
+  font-size: 1rem;
+}
+
+.field-label-small {
+  font-size: 0.75rem;
+  color: #888;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* Form URL Card */
+.form-url-card {
+  background: #2a2a2a;
+  padding: 1.5rem; /* Match field-card padding */
+  border-radius: 8px;
+  max-width: 1400px; /* Full page width like other content */
+}
+
+.card-header h4 {
+  margin: 0 0 1.5rem 0;
+  color: #92C9D6;
+  font-size: 1rem; /* Match field-key font-size */
+  font-weight: bold;
+}
+
+.preview-section {
+  margin-top: 1.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid #444;
+}
+
+.preview-section label {
+  display: block;
+  margin-bottom: 0.5rem;
+  color: #888;
+  font-size: 0.9rem;
+}
+
+.preview-link {
+  color: #92C9D6;
+  text-decoration: none;
+  word-break: break-all;
+  transition: color 0.2s;
+}
+
+.preview-link:hover {
+  color: #a8d9e5;
+  text-decoration: underline;
+}
+
+/* Links Grid */
+.links-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+  gap: 1.5rem;
+}
+
+.link-card {
+  background: #2a2a2a;
+  padding: 1.5rem;
+  border-radius: 8px;
+  transition: all 0.2s;
+}
+
+.link-card:hover {
+  background: #2f2f2f;
+}
+
+.link-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid #444;
+}
+
+.link-icon {
+  font-size: 1.5rem;
+}
+
+.link-header h4 {
+  margin: 0;
+  color: #92C9D6;
+  font-size: 1rem;
+  font-weight: bold;
+}
+
+.help-text code {
+  background: #1a1a1a;
+  color: #FF9F43;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-family: 'Courier New', monospace;
+  font-size: 0.85rem;
+}
+
+/* Legacy selectors for backward compatibility */
 .fields-content,
 .general-content {
   max-width: 800px;
