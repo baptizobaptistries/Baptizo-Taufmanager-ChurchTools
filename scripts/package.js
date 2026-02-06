@@ -67,9 +67,17 @@ console.log('✓ manifest.json found in dist/');
 
 try {
     // Create ZIP archive using system zip command
-    const zipCommand = `cd "${rootDir}" && zip -r "${archivePath}" dist/ -x "*.map" "*.DS_Store"`;
-    execSync(zipCommand, { stdio: 'inherit' });
-    
+    // Create ZIP archive
+    console.log('   Zipping...');
+    if (process.platform === 'win32') {
+        const powershellCommand = `powershell -Command "Compress-Archive -Path 'dist\\*' -DestinationPath '${archivePath}' -Force"`;
+        execSync(powershellCommand, { stdio: 'inherit' });
+    } else {
+        // Use cd to flat zip the contents of dist
+        const zipCommand = `cd dist && zip -r "${archivePath}" . -x "*.map" "*.DS_Store"`;
+        execSync(zipCommand, { stdio: 'inherit' });
+    }
+
     console.log('✅ Package created successfully!');
     console.log(`📁 Location: ${archivePath}`);
     console.log('');
@@ -78,13 +86,13 @@ try {
     console.log('   2. Go to Admin → Extensions → Upload Extension');
     console.log('   3. Select the ZIP file and install');
     console.log('');
-    
+
     // Show file size
     const stats = fs.statSync(archivePath);
     const fileSizeInBytes = stats.size;
     const fileSizeInMB = (fileSizeInBytes / (1024 * 1024)).toFixed(2);
     console.log(`📊 Package size: ${fileSizeInMB} MB`);
-    
+
 } catch (error) {
     console.error('❌ Error creating package:', error.message);
     process.exit(1);

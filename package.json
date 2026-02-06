@@ -4,7 +4,7 @@
     "version": "0.0.1",
     "type": "module",
     "scripts": {
-        "clean": "rm -rf dist",
+        "clean": "node -e \"require('fs').rmSync('dist', {recursive:true, force:true})\"",
         "dev": "vite",
         "dev:legacy": "vite --config vite.config.legacy.ts",
         "build": "tsc && vite build",
