@@ -12,8 +12,8 @@ export default ({ mode }: { mode: string }) => {
     const key = manifest.key;
 
     return defineConfig({
-        // Use extensions path for legacy mode to match modern config and correct CT path
-        base: `/extensions/${key}/`,
+        // Use relative path for legacy mode so it works regardless of the CT path
+        base: './',
         build: {
             rollupOptions: {
                 input: {
