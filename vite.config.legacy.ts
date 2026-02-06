@@ -12,16 +12,13 @@ export default ({ mode }: { mode: string }) => {
     const key = manifest.key;
 
     return defineConfig({
-        // Use relative path for legacy mode so it works regardless of the CT path
+        // Use relative path - we will inline assets so this mainly affects references inside CSS/JS if any
         base: './',
         build: {
-            lib: {
-                entry: resolve(__dirname, 'src/index.ts'),
-                name: `ChurchToolsExtension_${key}`,
-                formats: ['es'],
-                fileName: () => 'extension.es.js',
-            },
             rollupOptions: {
+                input: {
+                    main: resolve(__dirname, 'index-legacy.html'),
+                },
                 output: {
                     // Inline all dynamic imports to create a single bundle
                     inlineDynamicImports: true,
@@ -30,6 +27,21 @@ export default ({ mode }: { mode: string }) => {
         },
         plugins: [
             vue(),
+            // Serve index-legacy.html as the root index.html in dev mode
+            {
+                name: 'serve-legacy-as-index',
+                configureServer(server) {
+                    server.middlewares.use((req, res, next) => {
+                        if (req.url) {
+                            const url = new URL(req.url, `http://${req.headers.host}`);
+                            if (url.pathname.endsWith('/') || url.pathname.endsWith('/index.html')) {
+                                req.url = `/ccm/${key}/` + 'index-legacy.html' + url.search;
+                            }
+                        }
+                        next();
+                    });
+                },
+            },
             // Copy manifest.json to dist after build
             {
                 name: 'copy-manifest',
