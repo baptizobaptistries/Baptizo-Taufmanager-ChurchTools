@@ -70,12 +70,43 @@ export default ({ mode }: { mode: string }) => {
             'import.meta.env.VITE_PASSWORD': JSON.stringify(env.VITE_PASSWORD || ''),
             'import.meta.env.VITE_LOGIN_TOKEN': JSON.stringify(env.VITE_LOGIN_TOKEN || ''),
         },
-        // For development, use the ccm path
-        // For production library builds, use relative paths so ChurchTools can control deployment location
-        base: `/extensions/${key}/`,
-        build: isDevelopment ? {} : (buildMode === 'advanced' ? advancedBuildConfig : simpleBuildConfig),
+        // For production library builds, use relative paths or empty to allow loading from any location
+        base: './',
+        build: {
+            ...(isDevelopment ? {} : (buildMode === 'advanced' ? advancedBuildConfig : simpleBuildConfig)),
+            // Force inline of all assets (images, fonts, etc) to avoid 404s
+            assetsInlineLimit: 100000000, // 100MB limit
+            cssCodeSplit: false, // Force CSS to be gathered so we can inject it
+        },
         plugins: isDevelopment ? [vue()] : [
             vue(),
+            // Custom plugin to inject CSS into JS bundle
+            {
+                name: 'css-inject',
+                apply: 'build',
+                enforce: 'post',
+                generateBundle(opts, bundle) {
+                    let cssCode = '';
+                    // Find all CSS files
+                    for (const key in bundle) {
+                        if (bundle[key].fileName.endsWith('.css') && bundle[key].type === 'asset') {
+                            cssCode += (bundle[key] as any).source;
+                            delete bundle[key]; // Remove the file so it's not emitted
+                        }
+                    }
+                    if (cssCode) {
+                        // Inject into the entry chunk
+                        for (const key in bundle) {
+                            if (bundle[key].type === 'chunk' && (bundle[key] as any).isEntry) {
+                                const injectCode = `(function(){try{var elementStyle=document.createElement('style');elementStyle.appendChild(document.createTextNode(${JSON.stringify(cssCode)}));document.head.appendChild(elementStyle);}catch(e){console.error('vite-plugin-css-injected-by-js', e);}})();`;
+                                (bundle[key] as any).code = injectCode + (bundle[key] as any).code;
+                                break; // Only inject once (into the first entry found)
+                            }
+                        }
+                        console.log('✓ Injected CSS into JS bundle');
+                    }
+                }
+            },
             // Copy manifest.json to dist after build
             {
                 name: 'copy-manifest',
