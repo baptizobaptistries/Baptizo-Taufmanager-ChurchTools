@@ -8,27 +8,28 @@
 </head>
 
 <body>
+    <div id="init-loader" style="padding: 20px; text-align: center; font-family: sans-serif;">
+        <h2>Extension Loading...</h2>
+        <p>Verification Build: v1.0.6-iife-inline (Bundled & Inlined, No External Requests)</p>
+        <div id="init-log"
+            style="font-family: monospace; text-align: left; margin-top: 10px; font-size: 12px; color: #666;"></div>
+    </div>
     <div id="app"></div>
-    <script type="module">
-        import { renderExtension, loadEntryPoint } from './src/index.ts';
 
-        // Load and render the main entry point
-        (async () => {
+    <!-- Standard Script for Logging (Runs immediately) -->
+    <script>
+        window.log = function (msg) {
+            console.log('[Legacy] ' + msg);
             try {
-                // ChurchTools convention: extension point id matches entry point name
-                const entryPoint = await loadEntryPoint('main');
-                if (entryPoint) {
-                    await renderExtension('app', entryPoint, {});
-                    console.log('[Legacy] Extension rendered successfully');
-                } else {
-                    throw new Error('Entry point "main" not found');
-                }
-            } catch (error) {
-                console.error('Failed to load extension:', error);
-                document.getElementById('app').innerHTML = `<p style="color: red; padding: 20px;">Fehler beim Laden der App: ${error.message}</p>`;
-            }
-        })();
+                const el = document.getElementById('init-log');
+                if (el) el.innerHTML += msg + '<br>';
+            } catch (e) { }
+        };
+        window.log('Logger initialized (Standard Script)');
     </script>
+
+    <!-- Main Entry Point (Vite will bundle this) -->
+    <script type="module" src="./src/main-legacy.ts"></script>
 </body>
 
 </html>

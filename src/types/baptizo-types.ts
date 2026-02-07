@@ -3,7 +3,7 @@ export interface BaptizoFields {
     getauft_am?: string | null; // ISO Date YYYY-MM-DD
     urkunde_ueberreicht?: string | null; // ISO Date YYYY-MM-DD (date when certificate was given)
     in_gemeinde_integriert?: string | null; // ISO Date YYYY-MM-DD (date when integrated)
-    taufmanager_onboaring?: string | null; // ISO Date YYYY-MM-DD (when person joined Taufmanager)
+    taufmanager_onboarding?: string | null; // ISO Date YYYY-MM-DD (when person joined Taufmanager)
     taufmanager_offboarding?: string | null; // ISO Date YYYY-MM-DD (when person left Taufmanager)
     taufmanager_status?: string | null; // 'active' or null
     custom_flag?: string | boolean | null;

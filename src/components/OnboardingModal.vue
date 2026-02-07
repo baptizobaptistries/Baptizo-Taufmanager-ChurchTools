@@ -139,7 +139,7 @@ const addPerson = async () => {
     
     // Always overwrite onboarding date & clear offboarding date, set status active
     await provider.updatePersonFields(pid, {
-      taufmanager_onboaring: onboardingDate.value,
+      taufmanager_onboarding: onboardingDate.value,
       taufmanager_offboarding: null,
       taufmanager_status: 'active'
     });

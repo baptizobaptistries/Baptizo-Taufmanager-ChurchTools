@@ -172,8 +172,8 @@ export class PersonService implements DataProvider {
             // Date string or null
             ctFields['taufmanager_integration'] = fields.in_gemeinde_integriert;
         }
-        if (fields.taufmanager_onboaring !== undefined) {
-            ctFields['taufmanager_onboaring'] = fields.taufmanager_onboaring;
+        if (fields.taufmanager_onboarding !== undefined) {
+            ctFields['taufmanager_onboarding'] = fields.taufmanager_onboarding;
         }
         if (fields.taufmanager_offboarding !== undefined) {
             ctFields['taufmanager_offboarding'] = fields.taufmanager_offboarding;

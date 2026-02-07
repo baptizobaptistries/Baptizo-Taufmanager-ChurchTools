@@ -12,8 +12,8 @@ export default ({ mode }: { mode: string }) => {
     const key = manifest.key;
 
     return defineConfig({
-        // Use relative path - we will inline assets so this mainly affects references inside CSS/JS if any
-        base: './',
+        // Use absolute path to ensure assets load correctly regardless of document <base> tag
+        base: `/ccm/${key}/`,
         build: {
             rollupOptions: {
                 input: {
@@ -22,8 +22,15 @@ export default ({ mode }: { mode: string }) => {
                 output: {
                     // Inline all dynamic imports to create a single bundle
                     inlineDynamicImports: true,
+                    // Force a consistent filename without hash to simplify debugging (optional, but helpful)
+                    entryFileNames: 'main.js',
+                    assetFileNames: '[name].[ext]',
+                    format: 'iife',
+                    name: 'BaptizoTaufmanager', // Global variable name for IIFE
                 },
             },
+            // Output assets to root, not assets/ subdirectory
+            assetsDir: '',
         },
         plugins: [
             vue(),

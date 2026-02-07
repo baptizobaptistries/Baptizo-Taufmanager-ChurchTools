@@ -19,27 +19,34 @@ if (!fs.existsSync(legacyHtmlPath)) {
 console.log('📄 Found legacy HTML, processing...');
 let html = fs.readFileSync(legacyHtmlPath, 'utf-8');
 
-// Find JS and CSS files in assets
-const assetsDir = path.resolve(distDir, 'assets');
+// Find JS and CSS files in dist (flat structure)
+const assetsDir = distDir;
 if (fs.existsSync(assetsDir)) {
-    console.log('📂 Assets directory found, scanning...');
+    console.log('📂 Dist directory found, scanning for assets...');
     const files = fs.readdirSync(assetsDir);
 
     files.forEach(file => {
+        // Skip HTML and JSON files
+        if (file.endsWith('.html') || file.endsWith('.json')) return;
+
         const filePath = path.join(assetsDir, file);
+        if (fs.statSync(filePath).isDirectory()) return; // Skip directories like screenshots
+
         const content = fs.readFileSync(filePath, 'utf-8');
 
         if (file.endsWith('.js')) {
             console.log(`   📦 Inlining JS: ${file}`);
+            // Escape closing script tags to prevent breaking HTML
+            const safeContent = content.replace(/<\/script>/g, '<\\/script>');
             // Replace script tag
             // Looking for src="./assets/filename" or src="/assets/filename"
             const scriptRegex = new RegExp(`<script[^>]*src=["'].*?${file}["'][^>]*><\/script>`, 'g');
-            html = html.replace(scriptRegex, `<script type="module">${content}</script>`);
+            html = html.replace(scriptRegex, () => `<script>${safeContent}</script>`);
         } else if (file.endsWith('.css')) {
             console.log(`   🎨 Inlining CSS: ${file}`);
             // Replace link tag
             const linkRegex = new RegExp(`<link[^>]*href=["'].*?${file}["'][^>]*>`, 'g');
-            html = html.replace(linkRegex, `<style>${content}</style>`);
+            html = html.replace(linkRegex, () => `<style>${content}</style>`);
         }
     });
 } else {

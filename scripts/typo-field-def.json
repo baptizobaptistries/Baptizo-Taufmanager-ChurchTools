@@ -1,0 +1,23 @@
+{
+  "id": 199,
+  "key": "taufmanager_onboaring",
+  "name": "Taufmanager: Onboarding",
+  "nameTranslated": "Taufmanager: Onboarding",
+  "column": "taufmanager_onboaring",
+  "shorty": "Taufmanager Onboarding",
+  "fieldCategoryCode": "f_church",
+  "fieldTypeCode": "date",
+  "fieldTypeId": 3,
+  "isActive": "1",
+  "useAsPlaceholder": false,
+  "isNewPersonField": false,
+  "lineEnding": "<br/>",
+  "secLevel": 3,
+  "length": null,
+  "sortKey": 21,
+  "deleteOnArchive": false,
+  "nullable": true,
+  "hideInFrontend": false,
+  "isBasicInfo": "0",
+  "options": []
+}
