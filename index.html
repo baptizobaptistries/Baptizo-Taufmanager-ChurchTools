@@ -1,802 +1,786 @@
 <!DOCTYPE html>
 <html lang="en">
-    <head>
-        <meta charset="UTF-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>ChurchTools Extension</title>
-        <style>
-            * {
-                margin: 0;
-                padding: 0;
-                box-sizing: border-box;
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ChurchTools Extension</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            height: 100vh;
+            background: #f5f5f5;
+            display: flex;
+            flex-direction: column;
+        }
+
+        #menu {
+            background: #0036b3;
+            color: white;
+            display: flex;
+            align-items: stretch;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            flex-shrink: 0;
+        }
+
+        #menu-header {
+            padding: 1rem 1.5rem;
+            background: #0036b3;
+            display: flex;
+            flex-direction: column;
+            border-right: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        #menu-header h2 {
+            margin: 0;
+            font-size: 1rem;
+            font-weight: 600;
+        }
+
+        #menu-items {
+            display: flex;
+            flex: 1;
+            align-items: stretch;
+        }
+
+        .menu-item {
+            padding: 1rem 1.5rem;
+            cursor: pointer;
+            border-right: 1px solid rgba(255, 255, 255, 0.2);
+            transition: background 0.2s;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            min-width: 200px;
+        }
+
+        .menu-item:hover {
+            background: rgba(0, 0, 0, 0.1);
+        }
+
+        .menu-item.active {
+            background: #0060c0;
+            box-shadow: inset 0 -3px 0 rgba(255, 255, 255, 0.5);
+        }
+
+        .menu-item-primary {
+            font-weight: 600;
+            font-size: 1rem;
+            margin-bottom: 0.25rem;
+        }
+
+        .menu-item-secondary {
+            font-size: 0.75rem;
+            opacity: 0.85;
+            line-height: 1.3;
+        }
+
+        #content-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        #app {
+            flex: 1;
+            overflow: auto;
+        }
+
+        /* Toast notification styles */
+        .toast {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 1rem 1.5rem;
+            border-radius: 4px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            font-size: 0.95rem;
+            font-weight: 500;
+            z-index: 10000;
+            animation: slideIn 0.3s ease-out;
+            max-width: 400px;
+        }
+
+        .toast.success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+
+        .toast.error {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+
+        .toast.info {
+            background: #d1ecf1;
+            border: 1px solid #bee5eb;
+            color: #0c5460;
+        }
+
+        .toast.warning {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            color: #856404;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(400px);
+                opacity: 0;
             }
 
-            body {
-                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-                height: 100vh;
-                background: #f5f5f5;
-                display: flex;
-                flex-direction: column;
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        @keyframes slideOut {
+            from {
+                transform: translateX(0);
+                opacity: 1;
             }
 
-            #menu {
-                background: #0036b3;
-                color: white;
-                display: flex;
-                align-items: stretch;
-                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-                flex-shrink: 0;
+            to {
+                transform: translateX(400px);
+                opacity: 0;
             }
+        }
 
-            #menu-header {
-                padding: 1rem 1.5rem;
-                background: #0036b3;
-                display: flex;
-                flex-direction: column;
-                border-right: 1px solid rgba(255,255,255,0.2);
-            }
+        .toast.hiding {
+            animation: slideOut 0.3s ease-out forwards;
+        }
 
-            #menu-header h2 {
-                margin: 0;
-                font-size: 1rem;
-                font-weight: 600;
-            }
+        /* Test environment styles */
+        #test-container {
+            flex: 1;
+            display: flex;
+            overflow: hidden;
+        }
 
-            #menu-items {
-                display: flex;
-                flex: 1;
-                align-items: stretch;
-            }
+        #debug-panel {
+            width: 400px;
+            background: #f8f9fa;
+            border-right: 1px solid #dee2e6;
+            overflow-y: auto;
+            flex-shrink: 0;
+        }
 
-            .menu-item {
-                padding: 1rem 1.5rem;
-                cursor: pointer;
-                border-right: 1px solid rgba(255,255,255,0.2);
-                transition: background 0.2s;
-                display: flex;
-                flex-direction: column;
-                justify-content: center;
-                min-width: 200px;
-            }
+        .debug-section {
+            padding: 1rem;
+            border-bottom: 1px solid #dee2e6;
+        }
 
-            .menu-item:hover {
-                background: rgba(0,0,0,0.1);
-            }
+        .debug-section h3 {
+            margin: 0 0 0.75rem 0;
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: #495057;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
 
-            .menu-item.active {
-                background: #0060c0;
-                box-shadow: inset 0 -3px 0 rgba(255,255,255,0.5);
-            }
+        .debug-section label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: #6c757d;
+        }
 
-            .menu-item-primary {
-                font-weight: 600;
-                font-size: 1rem;
-                margin-bottom: 0.25rem;
-            }
+        .debug-section textarea {
+            width: 100%;
+            min-height: 120px;
+            padding: 0.5rem;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.8rem;
+            resize: vertical;
+        }
 
-            .menu-item-secondary {
-                font-size: 0.75rem;
-                opacity: 0.85;
-                line-height: 1.3;
-            }
+        .debug-section select {
+            width: 100%;
+            padding: 0.5rem;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            font-size: 0.85rem;
+            margin-bottom: 0.5rem;
+        }
 
-            #content-area {
-                flex: 1;
-                display: flex;
-                flex-direction: column;
-                overflow: hidden;
-            }
+        .debug-section button {
+            padding: 0.5rem 1rem;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            font-weight: 500;
+        }
 
-            #app {
-                flex: 1;
-                overflow: auto;
-            }
+        .debug-section button:hover {
+            background: #0056b3;
+        }
 
-            /* Toast notification styles */
-            .toast {
-                position: fixed;
-                top: 20px;
-                right: 20px;
-                padding: 1rem 1.5rem;
-                border-radius: 4px;
-                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-                font-size: 0.95rem;
-                font-weight: 500;
-                z-index: 10000;
-                animation: slideIn 0.3s ease-out;
-                max-width: 400px;
-            }
+        .debug-section button:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+        }
 
-            .toast.success {
-                background: #d4edda;
-                border: 1px solid #c3e6cb;
-                color: #155724;
-            }
+        #event-log {
+            max-height: 300px;
+            overflow-y: auto;
+            background: white;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 0.5rem;
+        }
 
-            .toast.error {
-                background: #f8d7da;
-                border: 1px solid #f5c6cb;
-                color: #721c24;
-            }
+        .event-log-entry {
+            padding: 0.5rem;
+            margin-bottom: 0.5rem;
+            background: #f8f9fa;
+            border-left: 3px solid #007bff;
+            border-radius: 4px;
+            font-size: 0.8rem;
+        }
 
-            .toast.info {
-                background: #d1ecf1;
-                border: 1px solid #bee5eb;
-                color: #0c5460;
-            }
+        .event-log-time {
+            color: #6c757d;
+            font-weight: 600;
+        }
 
-            .toast.warning {
-                background: #fff3cd;
-                border: 1px solid #ffeaa7;
-                color: #856404;
-            }
+        .event-log-name {
+            color: #007bff;
+            font-weight: 600;
+        }
 
-            @keyframes slideIn {
-                from {
-                    transform: translateX(400px);
-                    opacity: 0;
-                }
-                to {
-                    transform: translateX(0);
-                    opacity: 1;
-                }
-            }
+        .event-log-data {
+            margin-top: 0.25rem;
+            padding: 0.25rem;
+            background: white;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
 
-            @keyframes slideOut {
-                from {
-                    transform: translateX(0);
-                    opacity: 1;
-                }
-                to {
-                    transform: translateX(400px);
-                    opacity: 0;
-                }
-            }
+        #preview-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            background: #e9ecef;
+        }
 
-            .toast.hiding {
-                animation: slideOut 0.3s ease-out forwards;
-            }
+        #preview-controls {
+            padding: 0.75rem 1rem;
+            background: white;
+            border-bottom: 1px solid #dee2e6;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
 
-            /* Test environment styles */
-            #test-container {
-                flex: 1;
-                display: flex;
-                overflow: hidden;
-            }
+        #preview-controls label {
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: #6c757d;
+        }
 
-            #debug-panel {
-                width: 400px;
-                background: #f8f9fa;
-                border-right: 1px solid #dee2e6;
-                overflow-y: auto;
-                flex-shrink: 0;
-            }
+        #preview-controls input {
+            width: 80px;
+            padding: 0.25rem 0.5rem;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            font-size: 0.85rem;
+        }
 
-            .debug-section {
-                padding: 1rem;
-                border-bottom: 1px solid #dee2e6;
-            }
+        #preview-wrapper {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+            overflow: auto;
+        }
 
-            .debug-section h3 {
-                margin: 0 0 0.75rem 0;
-                font-size: 0.9rem;
-                font-weight: 600;
-                color: #495057;
-                text-transform: uppercase;
-                letter-spacing: 0.5px;
-            }
+        #preview-frame {
+            background: white;
+            border: 2px solid #007bff;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            position: relative;
+            resize: both;
+            overflow: auto;
+        }
 
-            .debug-section label {
-                display: block;
-                margin-bottom: 0.5rem;
-                font-size: 0.85rem;
-                font-weight: 500;
-                color: #6c757d;
-            }
+        #preview-content {
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+        }
+    </style>
+</head>
 
-            .debug-section textarea {
-                width: 100%;
-                min-height: 120px;
-                padding: 0.5rem;
-                border: 1px solid #ced4da;
-                border-radius: 4px;
-                font-family: 'Courier New', monospace;
-                font-size: 0.8rem;
-                resize: vertical;
-            }
-
-            .debug-section select {
-                width: 100%;
-                padding: 0.5rem;
-                border: 1px solid #ced4da;
-                border-radius: 4px;
-                font-size: 0.85rem;
-                margin-bottom: 0.5rem;
-            }
-
-            .debug-section button {
-                padding: 0.5rem 1rem;
-                background: #007bff;
-                color: white;
-                border: none;
-                border-radius: 4px;
-                cursor: pointer;
-                font-size: 0.85rem;
-                font-weight: 500;
-            }
-
-            .debug-section button:hover {
-                background: #0056b3;
-            }
-
-            .debug-section button:disabled {
-                background: #6c757d;
-                cursor: not-allowed;
-            }
-
-            #event-log {
-                max-height: 300px;
-                overflow-y: auto;
-                background: white;
-                border: 1px solid #dee2e6;
-                border-radius: 4px;
-                padding: 0.5rem;
-            }
-
-            .event-log-entry {
-                padding: 0.5rem;
-                margin-bottom: 0.5rem;
-                background: #f8f9fa;
-                border-left: 3px solid #007bff;
-                border-radius: 4px;
-                font-size: 0.8rem;
-            }
-
-            .event-log-time {
-                color: #6c757d;
-                font-weight: 600;
-            }
-
-            .event-log-name {
-                color: #007bff;
-                font-weight: 600;
-            }
-
-            .event-log-data {
-                margin-top: 0.25rem;
-                padding: 0.25rem;
-                background: white;
-                border-radius: 3px;
-                font-family: 'Courier New', monospace;
-                white-space: pre-wrap;
-                word-break: break-all;
-            }
-
-            #preview-container {
-                flex: 1;
-                display: flex;
-                flex-direction: column;
-                overflow: hidden;
-                background: #e9ecef;
-            }
-
-            #preview-controls {
-                padding: 0.75rem 1rem;
-                background: white;
-                border-bottom: 1px solid #dee2e6;
-                display: flex;
-                align-items: center;
-                gap: 1rem;
-            }
-
-            #preview-controls label {
-                font-size: 0.85rem;
-                font-weight: 500;
-                color: #6c757d;
-            }
-
-            #preview-controls input {
-                width: 80px;
-                padding: 0.25rem 0.5rem;
-                border: 1px solid #ced4da;
-                border-radius: 4px;
-                font-size: 0.85rem;
-            }
-
-            #preview-wrapper {
-                flex: 1;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                padding: 2rem;
-                overflow: auto;
-            }
-
-            #preview-frame {
-                background: white;
-                border: 2px solid #007bff;
-                border-radius: 8px;
-                box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-                position: relative;
-                resize: both;
-                overflow: auto;
-            }
-
-            #preview-content {
-                width: 100%;
-                height: 100%;
-                overflow: auto;
-            }
-        </style>
-    </head>
-    <body>
-        <div id="menu">
-            <div id="menu-header">
-                <h2>Extension Test Environment</h2>
-                <div>Select an entry point</div>
-            </div>
-            <div id="menu-items"></div>
+<body>
+    <div id="menu">
+        <div id="menu-header">
+            <h2>Extension Test Environment</h2>
+            <div>Select an entry point</div>
         </div>
-        <div id="content-area">
-            <!-- Full-width app for main/admin -->
-            <div id="app" style="display: none;"></div>
+        <div id="menu-items"></div>
+    </div>
+    <div id="content-area">
+        <!-- Full-width app for main/admin -->
+        <div id="app" style="display: none;"></div>
 
-            <!-- Test environment for other entry points -->
-            <div id="test-container" style="display: none;">
-                <div id="debug-panel">
-                    <div class="debug-section">
-                        <h3>Context Data</h3>
-                        <label>Entry Point Data:</label>
-                        <textarea id="context-data"></textarea>
-                        <button id="reload-btn" style="margin-top: 0.5rem;">Reload Entry Point</button>
-                    </div>
-
-                    <div class="debug-section">
-                        <h3>Event Bus</h3>
-                        <label>Send Event to Extension:</label>
-                        <select id="event-select">
-                            <option value="">Select an event...</option>
-                        </select>
-                        <label>Event Data (JSON):</label>
-                        <textarea id="event-data" style="min-height: 80px;"></textarea>
-                        <button id="send-event-btn" style="margin-top: 0.5rem;">Send Event</button>
-                    </div>
-
-                    <div class="debug-section">
-                        <h3>Event Log</h3>
-                        <button id="clear-log-btn" style="margin-bottom: 0.5rem; background: #6c757d;">Clear Log</button>
-                        <div id="event-log"></div>
-                    </div>
+        <!-- Test environment for other entry points -->
+        <div id="test-container" style="display: none;">
+            <div id="debug-panel">
+                <div class="debug-section">
+                    <h3>Context Data</h3>
+                    <label>Entry Point Data:</label>
+                    <textarea id="context-data"></textarea>
+                    <button id="reload-btn" style="margin-top: 0.5rem;">Reload Entry Point</button>
                 </div>
 
-                <div id="preview-container">
-                    <div id="preview-controls">
-                        <label>Width: <input type="number" id="width-input" value="600" min="200" max="2000"></label>
-                        <label>Height: <input type="number" id="height-input" value="400" min="200" max="1200"></label>
-                        <button id="apply-size-btn">Apply Size</button>
-                    </div>
-                    <div id="preview-wrapper">
-                        <div id="preview-frame">
-                            <div id="preview-content"></div>
-                        </div>
+                <div class="debug-section">
+                    <h3>Event Bus</h3>
+                    <label>Send Event to Extension:</label>
+                    <select id="event-select">
+                        <option value="">Select an event...</option>
+                    </select>
+                    <label>Event Data (JSON):</label>
+                    <textarea id="event-data" style="min-height: 80px;"></textarea>
+                    <button id="send-event-btn" style="margin-top: 0.5rem;">Send Event</button>
+                </div>
+
+                <div class="debug-section">
+                    <h3>Event Log</h3>
+                    <button id="clear-log-btn" style="margin-bottom: 0.5rem; background: #6c757d;">Clear Log</button>
+                    <div id="event-log"></div>
+                </div>
+            </div>
+
+            <div id="preview-container">
+                <div id="preview-controls">
+                    <label>Width: <input type="number" id="width-input" value="600" min="200" max="2000"></label>
+                    <label>Height: <input type="number" id="height-input" value="400" min="200" max="1200"></label>
+                    <button id="apply-size-btn">Apply Size</button>
+                </div>
+                <div id="preview-wrapper">
+                    <div id="preview-frame">
+                        <div id="preview-content"></div>
                     </div>
                 </div>
             </div>
         </div>
-        <script type="module" src="/src/index.ts"></script>
-        <script type="module">
-            import { renderExtension, loadEntryPoint } from '/src/index.ts';
-            import manifest from '/manifest.json';
-            import { extensionPointTestData } from '/test/extension-point-test-data.ts';
-            import { extensionPointMetadataById } from '@churchtools/extension-points';
+    </div>
+    <script type="module" src="/src/index.ts"></script>
+    <script type="module">
+        import { renderExtension, loadEntryPoint } from '/src/index.ts';
+        import manifest from '/manifest.json';
+        import { extensionPointMetadataById } from '@churchtools/extension-points';
 
-            // Use the centrally managed metadata map from churchtools-extension-points
-            const extensionPointMetadata = extensionPointMetadataById;
+        // Use the centrally managed metadata map from churchtools-extension-points
+        const extensionPointMetadata = extensionPointMetadataById;
 
-            let currentInstance = null;
-            let currentActiveMenuItem = null;
-            let currentExtensionPoint = null;
-            let eventLog = [];
+        let currentInstance = null;
+        let currentActiveMenuItem = null;
+        let currentExtensionPoint = null;
+        let eventLog = [];
 
-            // Toast notification function
-            function showToast(data) {
-                const { message, type = 'info', duration = 3000 } = data;
+        // Toast notification function
+        function showToast(data) {
+            const { message, type = 'info', duration = 3000 } = data;
 
-                // Create toast element
-                const toast = document.createElement('div');
-                toast.className = `toast ${type}`;
-                toast.textContent = message;
+            // Create toast element
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.textContent = message;
 
-                // Add to DOM
-                document.body.appendChild(toast);
+            // Add to DOM
+            document.body.appendChild(toast);
 
-                // Auto-remove after duration
+            // Auto-remove after duration
+            setTimeout(() => {
+                toast.classList.add('hiding');
                 setTimeout(() => {
-                    toast.classList.add('hiding');
-                    setTimeout(() => {
-                        document.body.removeChild(toast);
-                    }, 300); // Match animation duration
-                }, duration);
-            }
+                    document.body.removeChild(toast);
+                }, 300); // Match animation duration
+            }, duration);
+        }
 
-            // Get mock data for entry point
-            function getMockData(entryPointId, extensionPointId) {
-                const commonExtensionInfo = {
-                    name: manifest.name,
-                    version: manifest.version,
-                    key: manifest.key,
-                    description: manifest.description,
-                    author: manifest.author
-                };
+        // Get mock data for entry point
+        function getMockData(entryPointId, extensionPointId) {
+            const commonExtensionInfo = {
+                name: manifest.name,
+                version: manifest.version,
+                key: manifest.key,
+                description: manifest.description,
+                author: manifest.author
+            };
 
-                switch (entryPointId) {
-                    case 'admin':
-                        return {
-                            extensionInfo: commonExtensionInfo
-                        };
+            switch (entryPointId) {
+                case 'admin':
+                    return {
+                        extensionInfo: commonExtensionInfo
+                    };
 
-                    case 'main':
-                        return {
-                            userId: 1,
-                            context: {
-                                route: '/extension-boilerplate/dashboard',
-                                params: {
-                                    view: 'statistics'
-                                }
+                case 'main':
+                    return {
+                        userId: 1,
+                        context: {
+                            route: '/baptizotaufmanager/dashboard',
+                            params: {
+                                view: 'statistics'
                             }
-                        };
+                        }
+                    };
 
-                    default:
-                        // Use test data default data if available
-                        const testData = extensionPointTestData[extensionPointId];
-                        return testData?.defaultData || {};
-                }
+                default:
+                    // No test data fallback
+                    return {};
             }
+        }
 
-            // Check if extension point should use full-width mode
-            function isFullWidthExtensionPoint(extensionPointId) {
-                return extensionPointId === 'main' || extensionPointId === 'admin';
-            }
+        // Check if extension point should use full-width mode
+        function isFullWidthExtensionPoint(extensionPointId) {
+            return extensionPointId === 'main' || extensionPointId === 'admin';
+        }
 
-            // Add event to log
-            function logEvent(eventName, eventData) {
-                const timestamp = new Date().toLocaleTimeString();
-                eventLog.unshift({ timestamp, eventName, eventData });
+        // Add event to log
+        function logEvent(eventName, eventData) {
+            const timestamp = new Date().toLocaleTimeString();
+            eventLog.unshift({ timestamp, eventName, eventData });
 
-                const logContainer = document.getElementById('event-log');
-                if (logContainer) {
-                    logContainer.innerHTML = eventLog.map(entry => `
+            const logContainer = document.getElementById('event-log');
+            if (logContainer) {
+                logContainer.innerHTML = eventLog.map(entry => `
                         <div class="event-log-entry">
                             <div><span class="event-log-time">${entry.timestamp}</span> - <span class="event-log-name">${entry.eventName}</span></div>
                             <div class="event-log-data">${JSON.stringify(entry.eventData, null, 2)}</div>
                         </div>
                     `).join('');
-                }
+            }
+        }
+
+        // Setup test environment for non-full-width entry points
+        function setupTestEnvironment(extensionPoint, resetContextData = true) {
+            const metadata = extensionPointMetadata[extensionPoint.id];
+
+            if (!metadata) {
+                console.warn('No metadata found for', extensionPoint.id);
             }
 
-            // Setup test environment for non-full-width entry points
-            function setupTestEnvironment(extensionPoint, resetContextData = true) {
-                const testData = extensionPointTestData[extensionPoint.id];
-                const metadata = extensionPointMetadata[extensionPoint.id];
+            // Setup context data (only reset if requested)
+            if (resetContextData) {
+                const contextDataTextarea = document.getElementById('context-data');
+                const currentData = getMockData(extensionPoint.entryPoint, extensionPoint.id);
+                contextDataTextarea.value = JSON.stringify(currentData, null, 2);
+            }
 
-                if (!testData) {
-                    console.warn('No test data defined for', extensionPoint.id, '- using defaults');
-                }
-                if (!metadata) {
-                    console.warn('No metadata found for', extensionPoint.id);
-                }
+            // Setup event select - populate from contract metadata
+            const eventSelect = document.getElementById('event-select');
+            eventSelect.innerHTML = '<option value="">Select an event...</option>';
 
-                // Setup context data (only reset if requested)
-                if (resetContextData) {
-                    const contextDataTextarea = document.getElementById('context-data');
-                    const currentData = getMockData(extensionPoint.entryPoint, extensionPoint.id);
-                    contextDataTextarea.value = JSON.stringify(currentData, null, 2);
-                }
-
-                // Setup event select - populate from contract metadata
-                const eventSelect = document.getElementById('event-select');
-                eventSelect.innerHTML = '<option value="">Select an event...</option>';
-
-                // Get event names from metadata (contract)
-                if (metadata && metadata.eventNames && metadata.eventNames.length > 0) {
-                    metadata.eventNames.forEach(eventName => {
-                        const option = document.createElement('option');
-                        option.value = eventName;
-                        option.textContent = eventName;
-                        eventSelect.appendChild(option);
-                    });
-                } else {
-                    // No events defined in contract
+            // Get event names from metadata (contract)
+            if (metadata && metadata.eventNames && metadata.eventNames.length > 0) {
+                metadata.eventNames.forEach(eventName => {
                     const option = document.createElement('option');
-                    option.value = '';
-                    option.textContent = '(No events defined in contract)';
-                    option.disabled = true;
+                    option.value = eventName;
+                    option.textContent = eventName;
                     eventSelect.appendChild(option);
+                });
+            } else {
+                // No events defined in contract
+                const option = document.createElement('option');
+                option.value = '';
+                option.textContent = '(No events defined in contract)';
+                option.disabled = true;
+                eventSelect.appendChild(option);
+            }
+
+            // Setup event data textarea
+            const eventDataTextarea = document.getElementById('event-data');
+
+            // Clear previous event listeners by cloning and replacing
+            const newEventSelect = eventSelect.cloneNode(true);
+            eventSelect.parentNode.replaceChild(newEventSelect, eventSelect);
+
+            newEventSelect.addEventListener('change', (e) => {
+                const selectedEvent = e.target.value;
+                eventDataTextarea.value = '';
+            });
+
+            // Setup preview size
+            const widthInput = document.getElementById('width-input');
+            const heightInput = document.getElementById('height-input');
+            const defaultWidth = 600;
+            const defaultHeight = 400;
+            widthInput.value = defaultWidth;
+            heightInput.value = defaultHeight;
+            applyPreviewSize(defaultWidth, defaultHeight);
+
+            // Clear event log
+            eventLog = [];
+            document.getElementById('event-log').innerHTML = '';
+        }
+
+        // Apply preview size
+        function applyPreviewSize(width, height) {
+            const previewFrame = document.getElementById('preview-frame');
+            previewFrame.style.width = `${width}px`;
+            previewFrame.style.height = `${height}px`;
+        }
+
+        // Load an entry point (full-width mode)
+        async function loadEntryFullWidth(extensionPoint, menuItem) {
+            try {
+                const appContainer = document.getElementById('app');
+                const testContainer = document.getElementById('test-container');
+
+                // Show full-width app, hide test environment
+                appContainer.style.display = 'block';
+                testContainer.style.display = 'none';
+
+                appContainer.innerHTML = '<div style="padding: 2rem; text-align: center; color: #666;"><p>Loading...</p></div>';
+
+                // Cleanup previous instance
+                if (currentInstance && currentInstance.destroy) {
+                    await currentInstance.destroy();
+                    currentInstance = null;
                 }
 
-                // Setup event data textarea
-                const eventDataTextarea = document.getElementById('event-data');
+                // Load entry point
+                const entryPoint = await loadEntryPoint(extensionPoint.entryPoint);
+                const data = getMockData(extensionPoint.entryPoint, extensionPoint.id);
 
-                // Clear previous event listeners by cloning and replacing
-                const newEventSelect = eventSelect.cloneNode(true);
-                eventSelect.parentNode.replaceChild(newEventSelect, eventSelect);
+                // Render extension
+                const instance = await renderExtension('app', entryPoint, data);
+                currentInstance = instance;
 
-                newEventSelect.addEventListener('change', (e) => {
-                    const selectedEvent = e.target.value;
-                    // Pre-fill event data from test data if available
-                    if (selectedEvent && testData && testData.eventsData && testData.eventsData[selectedEvent] !== undefined) {
-                        const defaultData = testData.eventsData[selectedEvent];
-                        eventDataTextarea.value = defaultData ? JSON.stringify(defaultData, null, 2) : '';
-                    } else {
-                        eventDataTextarea.value = '';
-                    }
-                });
-
-                // Setup preview size
-                const widthInput = document.getElementById('width-input');
-                const heightInput = document.getElementById('height-input');
-                const defaultWidth = testData?.defaultSize?.width || 600;
-                const defaultHeight = testData?.defaultSize?.height || 400;
-                widthInput.value = defaultWidth;
-                heightInput.value = defaultHeight;
-                applyPreviewSize(defaultWidth, defaultHeight);
-
-                // Clear event log
-                eventLog = [];
-                document.getElementById('event-log').innerHTML = '';
-            }
-
-            // Apply preview size
-            function applyPreviewSize(width, height) {
-                const previewFrame = document.getElementById('preview-frame');
-                previewFrame.style.width = `${width}px`;
-                previewFrame.style.height = `${height}px`;
-            }
-
-            // Load an entry point (full-width mode)
-            async function loadEntryFullWidth(extensionPoint, menuItem) {
-                try {
-                    const appContainer = document.getElementById('app');
-                    const testContainer = document.getElementById('test-container');
-
-                    // Show full-width app, hide test environment
-                    appContainer.style.display = 'block';
-                    testContainer.style.display = 'none';
-
-                    appContainer.innerHTML = '<div style="padding: 2rem; text-align: center; color: #666;"><p>Loading...</p></div>';
-
-                    // Cleanup previous instance
-                    if (currentInstance && currentInstance.destroy) {
-                        await currentInstance.destroy();
-                        currentInstance = null;
-                    }
-
-                    // Load entry point
-                    const entryPoint = await loadEntryPoint(extensionPoint.entryPoint);
-                    const data = getMockData(extensionPoint.entryPoint, extensionPoint.id);
-
-                    // Render extension
-                    const instance = await renderExtension('app', entryPoint, data);
-                    currentInstance = instance;
-
-                    // Listen to notification:show event
-                    if (instance && instance.on) {
-                        instance.on('notification:show', (notificationData) => {
-                            console.log('[Index] Received notification:', notificationData);
-                            showToast(notificationData);
-                        });
-                    }
-                } catch (error) {
-                    console.error('Failed to load entry point:', error);
-                    document.getElementById('app').innerHTML = `
+                // Listen to notification:show event
+                if (instance && instance.on) {
+                    instance.on('notification:show', (notificationData) => {
+                        console.log('[Index] Received notification:', notificationData);
+                        showToast(notificationData);
+                    });
+                }
+            } catch (error) {
+                console.error('Failed to load entry point:', error);
+                document.getElementById('app').innerHTML = `
                         <div style="padding: 2rem; color: #e74c3c;">
                             <h2>Error loading extension</h2>
                             <p>${error.message}</p>
                         </div>
                     `;
-                }
             }
+        }
 
-            // Load an entry point (test environment mode)
-            async function loadEntryTestMode(extensionPoint, menuItem, preserveContextData = false) {
+        // Load an entry point (test environment mode)
+        async function loadEntryTestMode(extensionPoint, menuItem, preserveContextData = false) {
+            try {
+                const appContainer = document.getElementById('app');
+                const testContainer = document.getElementById('test-container');
+                const previewFrame = document.getElementById('preview-frame');
+
+                // Show test environment, hide full-width app
+                appContainer.style.display = 'none';
+                testContainer.style.display = 'flex';
+
+                // Setup surrounding HTML BEFORE rendering entry point
+                // No surrounding HTML, just use plain preview-content div
+                previewFrame.innerHTML = '<div id="preview-content"></div>';
+
+                const previewContent = document.getElementById('preview-content');
+                previewContent.innerHTML = '<div style="padding: 2rem; text-align: center; color: #666;"><p>Loading...</p></div>';
+
+                // Setup test environment (preserve context data on reload)
+                setupTestEnvironment(extensionPoint, !preserveContextData);
+
+                // Cleanup previous instance
+                if (currentInstance && currentInstance.destroy) {
+                    await currentInstance.destroy();
+                    currentInstance = null;
+                }
+
+                // Get context data from textarea
+                const contextDataTextarea = document.getElementById('context-data');
+                let contextData;
                 try {
-                    const appContainer = document.getElementById('app');
-                    const testContainer = document.getElementById('test-container');
-                    const previewFrame = document.getElementById('preview-frame');
+                    contextData = JSON.parse(contextDataTextarea.value);
+                } catch (e) {
+                    console.error('Invalid JSON in context data:', e);
+                    contextData = getMockData(extensionPoint.entryPoint, extensionPoint.id);
+                    contextDataTextarea.value = JSON.stringify(contextData, null, 2);
+                }
 
-                    // Show test environment, hide full-width app
-                    appContainer.style.display = 'none';
-                    testContainer.style.display = 'flex';
+                // Load entry point
+                const entryPoint = await loadEntryPoint(extensionPoint.entryPoint);
 
-                    // Get test data
-                    const testData = extensionPointTestData[extensionPoint.id];
+                // Render extension into preview-content
+                const instance = await renderExtension('preview-content', entryPoint, contextData);
+                currentInstance = instance;
+                currentExtensionPoint = extensionPoint;
 
-                    // Setup surrounding HTML BEFORE rendering entry point
-                    if (testData && testData.surroundingHtml) {
-                        // Replace entire preview-frame content with surrounding HTML
-                        // (which must include a div with id="preview-content")
-                        previewFrame.innerHTML = testData.surroundingHtml;
-                    } else {
-                        // No surrounding HTML, just use plain preview-content div
-                        previewFrame.innerHTML = '<div id="preview-content"></div>';
-                    }
+                if (instance && instance.on) {
+                    instance.on('*', (eventName, eventData) => {
+                        console.log(`[Index] Received event: ${eventName}`, eventData);
+                        logEvent(eventName, eventData);
 
-                    const previewContent = document.getElementById('preview-content');
-                    previewContent.innerHTML = '<div style="padding: 2rem; text-align: center; color: #666;"><p>Loading...</p></div>';
-
-                    // Setup test environment (preserve context data on reload)
-                    setupTestEnvironment(extensionPoint, !preserveContextData);
-
-                    // Cleanup previous instance
-                    if (currentInstance && currentInstance.destroy) {
-                        await currentInstance.destroy();
-                        currentInstance = null;
-                    }
-
-                    // Get context data from textarea
-                    const contextDataTextarea = document.getElementById('context-data');
-                    let contextData;
-                    try {
-                        contextData = JSON.parse(contextDataTextarea.value);
-                    } catch (e) {
-                        console.error('Invalid JSON in context data:', e);
-                        contextData = getMockData(extensionPoint.entryPoint, extensionPoint.id);
-                        contextDataTextarea.value = JSON.stringify(contextData, null, 2);
-                    }
-
-                    // Load entry point
-                    const entryPoint = await loadEntryPoint(extensionPoint.entryPoint);
-
-                    // Render extension into preview-content
-                    const instance = await renderExtension('preview-content', entryPoint, contextData);
-                    currentInstance = instance;
-                    currentExtensionPoint = extensionPoint;
-
-                    if (instance && instance.on) {
-                        instance.on('*', (eventName, eventData) => {
-                            console.log(`[Index] Received event: ${eventName}`, eventData);
-                            logEvent(eventName, eventData);
-
-                            // Special handling for notification:show
-                            if (eventName === 'notification:show') {
-                                showToast(eventData);
-                            }
-                        });
-                    }
-                } catch (error) {
-                    console.error('Failed to load entry point:', error);
-                    const previewContent = document.getElementById('preview-content');
-                    if (previewContent) {
-                        previewContent.innerHTML = `
+                        // Special handling for notification:show
+                        if (eventName === 'notification:show') {
+                            showToast(eventData);
+                        }
+                    });
+                }
+            } catch (error) {
+                console.error('Failed to load entry point:', error);
+                const previewContent = document.getElementById('preview-content');
+                if (previewContent) {
+                    previewContent.innerHTML = `
                             <div style="padding: 2rem; color: #e74c3c;">
                                 <h2>Error loading extension</h2>
                                 <p>${error.message}</p>
                             </div>
                         `;
-                    }
                 }
             }
+        }
 
-            // Load an entry point (dispatcher)
-            async function loadEntry(extensionPoint, menuItem, preserveContextData = false) {
-                // Update active menu item
-                if (currentActiveMenuItem) {
-                    currentActiveMenuItem.classList.remove('active');
-                }
-                menuItem.classList.add('active');
-                currentActiveMenuItem = menuItem;
-
-                // Choose rendering mode
-                if (isFullWidthExtensionPoint(extensionPoint.id)) {
-                    await loadEntryFullWidth(extensionPoint, menuItem);
-                } else {
-                    await loadEntryTestMode(extensionPoint, menuItem, preserveContextData);
-                }
+        // Load an entry point (dispatcher)
+        async function loadEntry(extensionPoint, menuItem, preserveContextData = false) {
+            // Update active menu item
+            if (currentActiveMenuItem) {
+                currentActiveMenuItem.classList.remove('active');
             }
+            menuItem.classList.add('active');
+            currentActiveMenuItem = menuItem;
 
-            // Initialize menu and load first entry point
-            async function init() {
-                try {
-                    const menuItemsContainer = document.getElementById('menu-items');
+            // Choose rendering mode
+            if (isFullWidthExtensionPoint(extensionPoint.id)) {
+                await loadEntryFullWidth(extensionPoint, menuItem);
+            } else {
+                await loadEntryTestMode(extensionPoint, menuItem, preserveContextData);
+            }
+        }
 
-                    // Create menu items from manifest
-                    manifest.extensionPoints.forEach((extensionPoint, index) => {
-                        const menuItem = document.createElement('div');
-                        menuItem.className = 'menu-item';
-                        menuItem.innerHTML = `
+        // Initialize menu and load first entry point
+        async function init() {
+            try {
+                const menuItemsContainer = document.getElementById('menu-items');
+
+                // Create menu items from manifest
+                manifest.extensionPoints.forEach((extensionPoint, index) => {
+                    const menuItem = document.createElement('div');
+                    menuItem.className = 'menu-item';
+                    menuItem.innerHTML = `
                             <div class="menu-item-primary">${extensionPoint.id}: ${extensionPoint.entryPoint}</div>
                             <div class="menu-item-secondary">${extensionPoint.title} • ${extensionPoint.description}</div>
                         `;
 
-                        // Load entry point on click
-                        menuItem.addEventListener('click', () => {
-                            loadEntry(extensionPoint, menuItem);
-                        });
-
-                        menuItemsContainer.appendChild(menuItem);
-
-                        // Load first entry point by default
-                        if (index === 0) {
-                            setTimeout(() => loadEntry(extensionPoint, menuItem), 0);
-                        }
+                    // Load entry point on click
+                    menuItem.addEventListener('click', () => {
+                        loadEntry(extensionPoint, menuItem);
                     });
-                } catch (error) {
-                    console.error('Failed to initialize:', error);
-                    document.getElementById('app').innerHTML = `
+
+                    menuItemsContainer.appendChild(menuItem);
+
+                    // Load first entry point by default
+                    if (index === 0) {
+                        setTimeout(() => loadEntry(extensionPoint, menuItem), 0);
+                    }
+                });
+            } catch (error) {
+                console.error('Failed to initialize:', error);
+                document.getElementById('app').innerHTML = `
                         <div style="padding: 2rem; color: #e74c3c;">
                             <h2>Initialization Error</h2>
                             <p>${error.message}</p>
                         </div>
                     `;
+            }
+
+            // Setup test environment controls
+            setupTestEnvironmentControls();
+        }
+
+        // Setup event handlers for test environment controls
+        function setupTestEnvironmentControls() {
+            // Reload button
+            document.getElementById('reload-btn').addEventListener('click', async () => {
+                if (currentExtensionPoint && currentActiveMenuItem) {
+                    await loadEntry(currentExtensionPoint, currentActiveMenuItem, true);
+                }
+            });
+
+            // Send event button
+            document.getElementById('send-event-btn').addEventListener('click', () => {
+                const eventSelect = document.getElementById('event-select');
+                const eventDataTextarea = document.getElementById('event-data');
+                const eventName = eventSelect.value;
+
+                if (!eventName) {
+                    alert('Please select an event to send');
+                    return;
                 }
 
-                // Setup test environment controls
-                setupTestEnvironmentControls();
-            }
+                let eventData;
+                try {
+                    eventData = eventDataTextarea.value ? JSON.parse(eventDataTextarea.value) : undefined;
+                } catch (e) {
+                    alert('Invalid JSON in event data: ' + e.message);
+                    return;
+                }
 
-            // Setup event handlers for test environment controls
-            function setupTestEnvironmentControls() {
-                // Reload button
-                document.getElementById('reload-btn').addEventListener('click', async () => {
-                    if (currentExtensionPoint && currentActiveMenuItem) {
-                        await loadEntry(currentExtensionPoint, currentActiveMenuItem, true);
-                    }
-                });
-
-                // Send event button
-                document.getElementById('send-event-btn').addEventListener('click', () => {
-                    const eventSelect = document.getElementById('event-select');
-                    const eventDataTextarea = document.getElementById('event-data');
-                    const eventName = eventSelect.value;
-
-                    if (!eventName) {
-                        alert('Please select an event to send');
-                        return;
-                    }
-
-                    let eventData;
-                    try {
-                        eventData = eventDataTextarea.value ? JSON.parse(eventDataTextarea.value) : undefined;
-                    } catch (e) {
-                        alert('Invalid JSON in event data: ' + e.message);
-                        return;
-                    }
-
-                    if (currentInstance && currentInstance.emit) {
-                        console.log('[Index] Sending event to extension:', eventName, eventData);
-                        currentInstance.emit(eventName, eventData);
-                        showToast({
-                            message: `Event "${eventName}" sent to extension`,
-                            type: 'info',
-                            duration: 2000
-                        });
-                    }
-                });
-
-                // Clear log button
-                document.getElementById('clear-log-btn').addEventListener('click', () => {
-                    eventLog = [];
-                    document.getElementById('event-log').innerHTML = '<div style="padding: 1rem; text-align: center; color: #6c757d;">No events logged yet</div>';
-                });
-
-                // Apply size button
-                document.getElementById('apply-size-btn').addEventListener('click', () => {
-                    const width = parseInt(document.getElementById('width-input').value, 10);
-                    const height = parseInt(document.getElementById('height-input').value, 10);
-                    applyPreviewSize(width, height);
-                });
-
-                // Allow Enter key in width/height inputs
-                ['width-input', 'height-input'].forEach(id => {
-                    document.getElementById(id).addEventListener('keypress', (e) => {
-                        if (e.key === 'Enter') {
-                            document.getElementById('apply-size-btn').click();
-                        }
+                if (currentInstance && currentInstance.emit) {
+                    console.log('[Index] Sending event to extension:', eventName, eventData);
+                    currentInstance.emit(eventName, eventData);
+                    showToast({
+                        message: `Event "${eventName}" sent to extension`,
+                        type: 'info',
+                        duration: 2000
                     });
-                });
-            }
+                }
+            });
 
-            init();
-        </script>
-    </body>
+            // Clear log button
+            document.getElementById('clear-log-btn').addEventListener('click', () => {
+                eventLog = [];
+                document.getElementById('event-log').innerHTML = '<div style="padding: 1rem; text-align: center; color: #6c757d;">No events logged yet</div>';
+            });
+
+            // Apply size button
+            document.getElementById('apply-size-btn').addEventListener('click', () => {
+                const width = parseInt(document.getElementById('width-input').value, 10);
+                const height = parseInt(document.getElementById('height-input').value, 10);
+                applyPreviewSize(width, height);
+            });
+
+            // Allow Enter key in width/height inputs
+            ['width-input', 'height-input'].forEach(id => {
+                document.getElementById(id).addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') {
+                        document.getElementById('apply-size-btn').click();
+                    }
+                });
+            });
+        }
+
+        init();
+    </script>
+</body>
+
 </html>

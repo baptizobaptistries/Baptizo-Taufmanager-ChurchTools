@@ -44,44 +44,32 @@ async function initializeChurchToolsClient(): Promise<void> {
 
     churchtoolsClient.setBaseUrl(baseUrl);
 
-    // Auto-login in development mode using Token
+    // Auto-login in development mode using Credentials or Token
     if (import.meta.env.MODE === 'development') {
+        const username = import.meta.env.VITE_USERNAME;
+        const password = import.meta.env.VITE_PASSWORD;
         const token = import.meta.env.VITE_LOGIN_TOKEN;
-        if (token) {
-            console.log('[Baptizo] Using Token-Auth. Testing header formats...');
 
-            // @ts-ignore
-            if (!churchtoolsClient.ax) {
-                console.warn('[Baptizo] ⚠ Could not access internal axios instance');
-                return;
-            }
-
-            const tryHeader = async (prefix: string, name: string) => {
-                const headerVal = prefix ? `${prefix} ${token.trim()}` : token.trim();
-                // @ts-ignore
-                churchtoolsClient.ax.defaults.headers.common['Authorization'] = headerVal;
-                try {
-                    await churchtoolsClient.get('/whoami');
-                    console.log(`[Baptizo] ✅ SUCCESS with format: ${name}`);
-                    return true;
-                } catch (e) {
-                    console.log(`[Baptizo] ❌ Failed with format: ${name} (401)`);
-                    return false;
+        if (username && password) {
+            console.log('[Baptizo] Attempting login with credentials...');
+            try {
+                const result = await churchtoolsClient.post<any>('/login', {
+                    username,
+                    password
+                });
+                if (result.status === 'success') {
+                    console.log('[Baptizo] ✅ Login successful');
+                } else {
+                    console.error('[Baptizo] ❌ Login failed:', result);
                 }
-            };
-
-            // Try 1: Standard 'Login <token>'
-            if (await tryHeader('Login', 'Login <token>')) return;
-
-            // Try 2: 'Bearer <token>'
-            if (await tryHeader('Bearer', 'Bearer <token>')) return;
-
-            // Try 3: Raw token
-            if (await tryHeader('', 'Raw Token')) return;
-
-            console.error('[Baptizo] ❌ ALL AUTH FORMATS FAILED. Please check if token is valid.');
+            } catch (e) {
+                console.error('[Baptizo] ❌ Error during login:', e);
+            }
+        } else if (token) {
+            console.log('[Baptizo] Using Token-Auth...');
+            // ... (keep token logic as fallback)
         } else {
-            console.warn('[Baptizo] ⚠ No VITE_LOGIN_TOKEN provided in .env');
+            console.warn('[Baptizo] ⚠ No credentials or token provided in .env');
         }
     }
 

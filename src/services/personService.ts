@@ -1,7 +1,7 @@
 import { churchtoolsClient } from '@churchtools/churchtools-client';
 import type { DataProvider } from './data-provider.interface';
 import type { BaptizoGroup, BaptizoPerson, BaptizoFields, BaptizoEvent } from '../types/baptizo-types';
-import { getAdminSettings } from '../lib/kv-store';
+import { getAdminSettings, getAppSettings, saveAppSettings } from '../lib/kv-store';
 
 /**
  * Real DataProvider implementation using ChurchTools API.
@@ -27,13 +27,6 @@ export class PersonService implements DataProvider {
     private async fetchGroupInternal(groupId: number, title: string): Promise<BaptizoGroup> {
         console.log(`[Baptizo] Versuche Daten zu laden für Gruppe: ${groupId} (${title})`);
 
-        // Log masked token
-        const token = import.meta.env.VITE_LOGIN_TOKEN;
-        if (!token) {
-            console.error('[Baptizo] Umgebungsvariable VITE_LOGIN_TOKEN fehlt. Bitte Server neu starten.');
-        } else {
-            console.log(`[Baptizo] Verwendeter Token: ${token.substring(0, 5)}...`);
-        }
 
         try {
             // Fetch ALL group members with pagination
@@ -84,7 +77,7 @@ export class PersonService implements DataProvider {
                     getauft_am: personDetail.taufmanager_taufe || null,
                     urkunde_ueberreicht: personDetail.taufmanager_urkunde || null,
                     in_gemeinde_integriert: personDetail.taufmanager_integration || null,
-                    taufmanager_onboaring: personDetail.taufmanager_onboaring || null,
+                    taufmanager_onboarding: personDetail.taufmanager_onboarding || null,
                     taufmanager_offboarding: personDetail.taufmanager_offboarding || null
                 };
 
@@ -94,10 +87,10 @@ export class PersonService implements DataProvider {
                 }
 
                 // Entry date fallback logic:
-                // 1. taufmanager_onboaring (Explicit Date)
+                // 1. taufmanager_onboarding (Explicit Date)
                 // 2. group member "comment" (Legacy Taufmanager stores entry date there)
                 // 3. group member "memberStartDate" (CT System Date)
-                let entryDate = personDetail.taufmanager_onboaring; // Prio 1
+                let entryDate = personDetail.taufmanager_onboarding; // Prio 1
 
                 if (!entryDate && m.comment) {
                     // Start date is often in comment for legacy reasons
@@ -239,21 +232,21 @@ export class PersonService implements DataProvider {
         console.warn(`[Baptizo] Delete person ${id} not implemented in real provider`);
     }
 
-    // Settings (Email templates etc - stored in KV Store?)
-    // For now, use defaults or implement KV store for APP settings (different from IDs)
+    // Settings (Email templates etc - stored in KV Store)
     async getSettings(): Promise<any> {
-        // Return default settings for Dashboard
-        // In future: load from KV 'baptizo-app-settings'
-        return {
-            emailTemplates: {},
+        const settings = await getAppSettings();
+        return settings || {
+            emailTemplates: [],
+            placeholders: [],
             multiSiteMode: false,
-            campuses: []
+            campuses: [],
+            emailSendingEnabled: false
         };
     }
 
     async updateSettings(settings: any): Promise<void> {
-        // TODO: Save to KV
-        console.log('[Baptizo] Update settings:', settings);
+        await saveAppSettings(settings);
+        console.log('[Baptizo] ✓ App settings saved to KV store');
     }
 
     async getEvents(): Promise<BaptizoEvent[]> {
@@ -302,7 +295,7 @@ export class PersonService implements DataProvider {
                     getauft_am: null,
                     urkunde_ueberreicht: null,
                     in_gemeinde_integriert: null,
-                    taufmanager_onboaring: null,
+                    taufmanager_onboarding: null,
                     taufmanager_offboarding: null
                 },
                 imageUrl: p.imageUrl || `https://ui-avatars.com/api/?name=${p.firstName}+${p.lastName}&background=random`,

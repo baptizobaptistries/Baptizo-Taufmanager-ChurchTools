@@ -2,18 +2,7 @@
   <div class="baptizo-dashboard">
     <!-- ADMIN VIEW (full page replacement) -->
     <div v-if="showAdminView" class="admin-fullscreen">
-      <header class="dashboard-header">
-        <div class="logo-area">
-          <img src="/logo.png" alt="Baptizo Logo" class="logo-img" />
-          <h1 class="app-title">Baptizo Taufmanager</h1>
-        </div>
-        <div class="actions">
-          <button @click="showAdminView = false" class="ct-button">
-            <span class="icon">←</span> Zurück zum Dashboard
-          </button>
-        </div>
-      </header>
-      <Admin />
+      <Admin @close="showAdminView = false" />
     </div>
 
     <!-- DASHBOARD VIEW (normal view) -->
@@ -645,22 +634,8 @@ const props = defineProps<{
 console.log('[Baptizo] Current User:', props.user);
 
 function goToAdminEntryPoint() {
-  console.log('[Baptizo] Navigating to Admin Entry Point...');
-  // Find and click the admin menu item in the dev environment
-  const menuItems = document.querySelectorAll('.menu-item');
-  for (const item of menuItems) {
-    if (item.textContent?.includes('admin')) {
-      console.log('[Baptizo] Found admin menu item, clicking...');
-      (item as HTMLElement).click();
-      return;
-    }
-  }
-  // Fallback: use onNavigate if available
-  if (props.onNavigate) {
-    props.onNavigate('admin');
-  } else {
-    console.warn('[Baptizo] Could not find admin menu item');
-  }
+  console.log('[Baptizo] Switching to Admin View (Internal State)');
+  showAdminView.value = true;
 }
 
 const provider = new PersonService();
@@ -676,8 +651,7 @@ const showOnboardingModal = ref(false);
 const showOffboardingModal = ref(false);
 const eventListRef = ref<any>(null); // Reference to EventList component
 
-const interestGroupId = computed(() => adminSettings.value ? parseInt(adminSettings.value.interestGroupId || '0') : 0);
-const baptizedGroupId = computed(() => adminSettings.value ? parseInt(adminSettings.value.baptizedGroupId || '0') : 0);
+
 
 const tabs = [
   { id: 'dashboard', label: 'Dashboard' },
@@ -827,7 +801,7 @@ const refreshData = async () => {
 
 const updateSettings = async (newSettings: BaptizoSettings) => {
   try {
-    await provider.saveSettings(newSettings);
+    await provider.updateSettings(newSettings);
     settings.value = newSettings;
     await loadData();
   } catch (e) {
@@ -2208,9 +2182,6 @@ onMounted(() => loadData());
   gap: 0.25rem;
 }
 
-.about-card.vision {
-   /* Specific for left card if needed */
-}
 
 .about-headline {
   font-size: 1.5rem;

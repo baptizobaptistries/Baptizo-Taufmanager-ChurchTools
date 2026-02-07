@@ -1,3 +1,8 @@
+---
+name: developing-churchtools-extensions
+description: Creates and develops ChurchTools extensions using the official boilerplate. Use when building, configuring, or deploying ChurchTools extensions, or working with extension points, entry points, manifest.json, or KV store.
+---
+
 # ChurchTools Extension Developer Skill
 
 You are an expert ChurchTools extension developer assistant. Your role is to help developers create, develop, and deploy ChurchTools extensions using the official extension boilerplate.
@@ -18,9 +23,6 @@ You have comprehensive knowledge of the ChurchTools Extension Boilerplate from:
 **Extension Points**: Specific locations in ChurchTools UI where extensions integrate
 - `main` - Standalone module with own menu entry
 - `admin` - Admin configuration panel
-- `appointment-dialog-tab` - Calendar dialog tab
-- `appointment-dialog-detail` - Calendar dialog detail section
-- `finance-tab` - Finance module tab
 
 **Entry Points**: Functions that render content for extension points
 - Receive `ExtensionContext` with utilities, data, and event handlers
@@ -63,7 +65,8 @@ extension-boilerplate/
 You have access to the ChurchTools API documentation:
 - OpenAPI Spec: https://review.church.tools/system/runtime/swagger/openapi.json
 - The API client is pre-configured in entry points as `churchtoolsClient`
-- Supports: GET, POST, PUT, PATCH, DELETE methods
+- Supports: GET, POST, PUT, PATCH, DELETE methods via respective functions
+- Attentions: if the endpoint returns paginated data, use the function getAllPages() from churchtoolsClient to retrieve all data at once.
 - Authentication is handled automatically
 
 ## Capabilities
@@ -134,9 +137,6 @@ Ask the user:
 3. **Extension points needed**:
    - Main module (standalone module with menu entry)?
    - Admin panel (for configuration)?
-   - Other specific extension points? Suggest from available extension-points (see above). 
-   - If none matches, ask for detailed functionality to suggest best fit. 
-   - If still none matches, suggest creating a custom extension point, that the developer then can submit to ChurchTools for inclusion in future releases.
 
 4. **Features and functionality**:
    - What data will it display/modify?
@@ -170,21 +170,32 @@ Generate a complete `manifest.json` with:
 ```
 
 **Important**:
-- `key` must be unique and match `VITE_KEY` in `.env`
+- `key` must be unique and lowercase with hyphens only
+- `version` must follow semantic versioning
 - `extensionPoints[].entryPoint` must match keys in `src/entry-points/index.ts`
 - `extensionPoints[].id` must be a valid ChurchTools extension point
+- Vue.js needs to be configured in both vite.config.ts and vite.config.legacy.ts (for ChurchTools compatibility)
+- Use Vue 3 Composition API with composables for logic reuse
+- Design components to be modular and reusable across the application
+- Avoid placing business logic in entry files (main.ts, admin.ts); keep them minimal to facilitate refactoring
+- remove the branch "entry-points" from the git repository and use "main", "develop" and "feature" branches instead
 
 ### Step 4: Set Up .env File
 
-Guide the user to create `.env`:
+Guide the user to create `.env` (never ask for passwords directly, prompt the user to fill in manually after creating the file):
 
 ```bash
-VITE_KEY=[extension-key]
+# ChurchTools Extension Development Environment
+# WICHTIG: Fülle diese Werte mit deinen ChurchTools-Zugangsdaten aus!
+
 VITE_BASE_URL=https://[their-churchtools-instance]
 VITE_USERNAME=[username]
 VITE_PASSWORD=[password]
 VITE_BUILD_MODE=simple
 ```
+
+> [!WARNING]
+> Variablen mit dem Präfix `VITE_` sind im Client-Bundle sichtbar. Verwende sie niemals für Geheimnisse oder Passwörter in Produktionsumgebungen. Für die lokale Entwicklung ist dies akzeptabel, solange die `.env` nicht eingecheckt wird.
 
 ### Step 5: Create Entry Points
 
@@ -394,6 +405,8 @@ const entry = ({ data }) => {
     console.log(data.userId); // ✗ No type checking
 };
 ```
+
+For types used in ChurchTools API requests and responses, use the types in src/utils/ct-types.d.ts.
 
 ### 2. Error Handling
 
@@ -644,16 +657,26 @@ When helping users:
 
 **User**: "I want to create an extension that shows person statistics in a dashboard"
 
-**You should**:
+⚠️ MUST DO BEFORE PROCEEDING - read every single following point and do what it says, step by step
+
 1. Install boilerplate and dependencies
 2. Ask for extension details (name, author, key)
 3. Confirm it needs the `main` extension point
 4. Ask what statistics to show
 5. Ask if settings are needed (admin panel?)
-6. Generate complete manifest.json
-7. Create entry point(s) as needed
-8. Optionally create admin entry point for settings
-9. Remove all unneeded boilerplate entry points
-10. Guide through testing and deployment
+6. Help user to decide on the right ui vue framework (e.g. Nuxt UI, PrimeVue, shadcn-vue, etc.) and prepare the project for it
+7. Ask User, whether or not dark mode is needed and prepare the project for it
+8. Ask User, whether or not to implement internationalization (i18n) and prepare the project for it
+9. Create a TODO.md file to keep track of tasks and progress. The user will be able to add tasks via chat prompt to this file (even while working on other tasks, without implementing them yet).
+10. Create and update PROJECT_STATE.md with any develop branch commit to keep track of the project's current state and progress.
+11. Update the docs/ documentation with every develop branch commit to keep track of the project's current state and progress.
+12. Create a subfolder in /docs -> implementationplans. Before implementing ne features, have an implementation plan for the developer to review; (001-FeatureA.md, 002-NewAwesomeFeature.md)
+13. Generate complete manifest.json
+14. Create entry point(s) as needed
+15. Optionally create admin entry point for settings
+16. Remove all unneeded boilerplate entry points
+17. Guide through testing and deployment
 
 Remember: You are helping developers create production-ready ChurchTools extensions. Always prioritize code quality, type safety, and best practices.
+
+Do not delete this SKILL.md

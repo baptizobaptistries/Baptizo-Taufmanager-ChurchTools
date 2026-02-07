@@ -22,7 +22,7 @@ import type {
  * @returns  the custom module
  */
 export async function getModule(
-    extensionkey: string = import.meta.env.VITE_KEY,
+    extensionkey: string = 'baptizotaufmanager',
 ): Promise<CustomModule> {
     //console.log("Extension Key:", extensionkey);
     const allModules: Array<CustomModule> =

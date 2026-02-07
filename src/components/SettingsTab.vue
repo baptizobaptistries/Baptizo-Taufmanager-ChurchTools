@@ -248,7 +248,6 @@
 <script setup lang="ts">
 import { ref, watch, computed, onMounted } from 'vue';
 import { type BaptizoSettings, DEFAULT_SETTINGS, type EmailTemplate } from '../types/baptizo-settings';
-import { MockDataProvider } from '../services/mock-data-provider';
 import { EventService } from '../services/eventService';
 
 const props = defineProps<{
@@ -259,7 +258,6 @@ const emit = defineEmits<{
   (e: 'update', settings: BaptizoSettings): void;
 }>();
 
-const SettingsService = new MockDataProvider();
 const eventService = new EventService();
 
 const nextBaptismDate = ref<string>('Berechne...');
@@ -463,7 +461,7 @@ const deleteTemplate = (id: string) => {
 const saveSettings = async (silent = false) => {
   if (!silent) saving.value = true;
   
-  await SettingsService.updateSettings(localSettings.value);
+  
   emit('update', localSettings.value);
   originalSettings.value = JSON.stringify(localSettings.value); // Reset dirty state
   

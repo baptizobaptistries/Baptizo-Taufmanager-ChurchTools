@@ -125,17 +125,10 @@ const props = defineProps<{
   onNavigate?: (target: string) => void;
 }>();
 
+const emit = defineEmits(['close']);
+
 function navigateBack() {
-  const menuItems = document.querySelectorAll('.menu-item');
-  for (const item of menuItems) {
-    if (item.textContent?.includes('main')) {
-      (item as HTMLElement).click();
-      return;
-    }
-  }
-  if (props.onNavigate) {
-    props.onNavigate('main');
-  }
+  emit('close');
 }
 
 const localSettings = ref<AdminSettings>(getDefaultAdminSettings());
