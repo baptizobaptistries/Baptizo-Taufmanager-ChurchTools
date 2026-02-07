@@ -10,8 +10,6 @@ export default ({ mode }: { mode: string }) => {
     const env = loadEnv(mode, process.cwd(), '');
     process.env = { ...process.env, ...env };
 
-    // Debug: Log loaded env vars
-    console.log(`VITE_BASE_URL from env:`, env.VITE_BASE_URL);
 
     const isDevelopment = mode === 'development';
     const key = manifest.key;
