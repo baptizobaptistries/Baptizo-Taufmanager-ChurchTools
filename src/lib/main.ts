@@ -67,7 +67,7 @@ async function initializeChurchToolsClient(): Promise<void> {
             }
         } else if (token) {
             console.log('[Baptizo] Using Token-Auth...');
-            // ... (keep token logic as fallback)
+            (churchtoolsClient as any).setApiToken(token);
         } else {
             console.warn('[Baptizo] ⚠ No credentials or token provided in .env');
         }
