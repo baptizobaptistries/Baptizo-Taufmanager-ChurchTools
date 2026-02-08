@@ -67,18 +67,6 @@ export default ({ mode }: { mode: string }) => {
                 },
             },
 
-            // Rename index-legacy.html to index.html
-            {
-                name: 'rename-legacy-index',
-                closeBundle() {
-                    const distIndexLegacy = resolve(__dirname, 'dist/index-legacy.html');
-                    const distIndex = resolve(__dirname, 'dist/index.html');
-                    if (existsSync(distIndexLegacy)) {
-                        renameSync(distIndexLegacy, distIndex);
-                        console.log('✓ Renamed index-legacy.html to index.html');
-                    }
-                },
-            },
         ],
     });
 };

@@ -17,15 +17,15 @@ console.log('[Baptizo Legacy] Initializing...');
 
 const init = async () => {
     try {
-        // 0. Wait for DOM (Safety for legacy environments)
-        if (document.readyState === 'loading') {
-            await new Promise(resolve => document.addEventListener('DOMContentLoaded', resolve));
-        }
-
-        // 1. Detect Base URL (Critical for API calls)
+        // 1. Initial setup (Goldstandard: setBaseUrl MUST be first)
         const baseUrl = window.settings?.base_url ?? import.meta.env.VITE_BASE_URL ?? 'https://baptizo.church.tools/';
         churchtoolsClient.setBaseUrl(baseUrl);
         console.log('[Baptizo Legacy] Base URL:', baseUrl);
+
+        // 2. Wait for DOM (Safety for legacy environments)
+        if (document.readyState === 'loading') {
+            await new Promise(resolve => document.addEventListener('DOMContentLoaded', resolve));
+        }
 
         // 2. Simple mounting
         const app = createApp(Dashboard, {

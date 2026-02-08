@@ -61,7 +61,7 @@ export default ({ mode }: { mode: string }) => {
     return defineConfig({
         // Explicitly set envDir to project root to ensure .env is loaded
         envDir: process.cwd(),
-        // Explicitly define env vars for client (workaround for Vite env loading issues)
+        // Explicitly define env vars for client (ensures injection into the bundle)
         define: {
             'import.meta.env.VITE_BASE_URL': JSON.stringify(env.VITE_BASE_URL || 'https://baptizo.church.tools/'),
             'import.meta.env.VITE_USERNAME': JSON.stringify(env.VITE_USERNAME || ''),

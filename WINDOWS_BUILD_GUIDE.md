@@ -49,6 +49,17 @@ Avoid PowerShell's `Compress-Archive`. It often creates ZIP files with non-stand
 
 **Solution:** Use `tar.exe` (available in Windows 10/11) as it provides standard `bsdtar` compatibility.
 
+### 4. Critical Environment Setup (.env Encoding)
+Windows tools like **PowerShell** (`> .env`) or **Notepad** default to saving files in **UTF-16LE** encoding. Vite and Node.js cannot read this format, treating your `.env` file as binary or empty, leading to silent failures (e.g., missing credentials).
+
+**The Gold Standard:**
+*   **Always** ensure your `.env` file is saved as **UTF-8**.
+*   **Verify** by opening in VS Code and checking the bottom status bar.
+*   **Fix via PowerShell:**
+    ```powershell
+    [IO.File]::WriteAllText(".env", "VITE_KEY=value", [System.Text.Encoding]::UTF8)
+    ```
+
 ---
 
 ## 💻 Implementation: `scripts/package.js`

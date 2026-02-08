@@ -21,6 +21,8 @@
 -   Renamed extension key to `baptizotaufmanager`.
 -   Established basic Dashboard with 4-list design and interactive charts.
 -   Admin panel implemented for CT ID configuration.
+-   **API Migration**: Fully migrated settings storage to `/custommodules` API (aligned with Time-Tracker logic).
+-   **Environment Fix**: Resolved `.env` UTF-16LE encoding issue, enabling correct credential loading in dev mode.
 
 ## Known Issues
 -   Onboarding date migration requires careful verification of field names in ChurchTools.

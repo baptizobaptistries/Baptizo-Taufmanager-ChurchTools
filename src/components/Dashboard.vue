@@ -771,10 +771,10 @@ const loadData = async () => {
   try {
     // Parallel fetch
     const [groupsData, settingsData, adminCfg, eventsDataRes] = await Promise.all([
-      provider.getGroups(),
-      provider.getSettings(),
-      getAdminSettings(),
-      eventService.getEvents()
+      provider.getGroups().catch(e => { console.error('[Baptizo] getGroups failed:', e); return []; }),
+      provider.getSettings().catch(e => { console.error('[Baptizo] getSettings failed:', e); return {}; }),
+      getAdminSettings().catch(e => { console.error('[Baptizo] getAdminSettings failed:', e); return null; }),
+      eventService.getEvents().catch(e => { console.error('[Baptizo] getEvents failed:', e); return []; })
     ]);
     
     groups.value = groupsData || [];

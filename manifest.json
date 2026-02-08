@@ -10,13 +10,13 @@
   "extensionPoints": [
     {
       "id": "main",
-      "entryPoint": "index.html",
+      "entryPoint": "main",
       "title": "Taufmanager",
       "description": "Dashboard & Verwaltung"
     },
     {
       "id": "admin",
-      "entryPoint": "index.html",
+      "entryPoint": "admin",
       "title": "System",
       "description": "Technischer Status"
     }

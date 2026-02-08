@@ -1,0 +1,15 @@
+{
+  "hash": "a0ec3237",
+  "configHash": "9d6af5ed",
+  "lockfileHash": "6fac4892",
+  "browserHash": "57dd7e8a",
+  "optimized": {
+    "@churchtools/extension-points": {
+      "src": "../../node_modules/@churchtools/extension-points/dist/index.js",
+      "file": "@churchtools_extension-points.js",
+      "fileHash": "41ac12b2",
+      "needsInterop": false
+    }
+  },
+  "chunks": {}
+}
