@@ -1,5 +1,11 @@
 #!/usr/bin/env node
 
+/**
+ * Professional Packaging Script for ChurchTools Extensions
+ * Uses tar.exe (bsdtar) on Windows or zip on Mac/Linux for maximum compatibility.
+ * Ensures the 'dist/' folder structure required by CT Legacy.
+ */
+
 import fs from 'fs';
 import path from 'path';
 import { execSync } from 'child_process';
@@ -9,91 +15,67 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const rootDir = path.resolve(__dirname, '..');
 
-// Read package.json for project info
+// Read info
 const packageJson = JSON.parse(fs.readFileSync(path.join(rootDir, 'package.json'), 'utf8'));
-
-// Read manifest.json for extension info
 let manifest;
 try {
     manifest = JSON.parse(fs.readFileSync(path.join(rootDir, 'manifest.json'), 'utf8'));
-} catch (error) {
-    console.warn('Warning: Could not read manifest.json, using package.json');
+} catch (e) {
+    console.warn('Warning: No manifest.json found at root');
 }
 
-const projectName = manifest?.key || packageJson.name;
-const extensionName = manifest?.name || projectName;
+const key = manifest?.key || packageJson.name;
 const version = manifest?.version || packageJson.version;
 
-// Get git commit hash (short)
-let gitHash = '';
+// Get git commit hash
+let gitHash = 'unknown';
 try {
     gitHash = execSync('git rev-parse --short HEAD', { encoding: 'utf8' }).trim();
-} catch (error) {
-    console.warn('Warning: Could not get git hash, using timestamp');
-    gitHash = Date.now().toString(36);
+} catch (e) { }
+
+const archiveName = `${key}-v${version}-${gitHash}.zip`;
+const archivePath = path.join(rootDir, 'releases', archiveName);
+
+console.log(`📦 Packaging ${key} v${version} (${gitHash})...`);
+
+// Verify dist
+const distDir = path.join(rootDir, 'dist');
+if (!fs.existsSync(distDir)) {
+    console.error('❌ Error: dist directory missing. Run build first.');
+    process.exit(1);
 }
 
-// Create releases directory
+// Ensure releases dir
 const releasesDir = path.join(rootDir, 'releases');
 if (!fs.existsSync(releasesDir)) {
     fs.mkdirSync(releasesDir, { recursive: true });
 }
 
-// Define archive name
-const archiveName = `${projectName}-v${version}-${gitHash}.zip`;
-const archivePath = path.join(releasesDir, archiveName);
-
-console.log('📦 Creating ChurchTools extension package...');
-console.log(`   Extension: ${extensionName}`);
-console.log(`   Key: ${projectName}`);
-console.log(`   Version: ${version}`);
-console.log(`   Git Hash: ${gitHash}`);
-console.log(`   Archive: ${archiveName}`);
-
-// Check if dist directory exists
-const distDir = path.join(rootDir, 'dist');
-if (!fs.existsSync(distDir)) {
-    console.error('❌ Error: dist directory not found. Run "npm run build" first.');
+// Ensure manifest and index are in dist
+if (!fs.existsSync(path.join(distDir, 'manifest.json')) || !fs.existsSync(path.join(distDir, 'index.html'))) {
+    console.error('❌ Error: Required files (manifest.json, index.html) missing in dist/');
     process.exit(1);
 }
-
-// Check if manifest.json exists in dist
-const distManifest = path.join(distDir, 'manifest.json');
-if (!fs.existsSync(distManifest)) {
-    console.error('❌ Error: manifest.json not found in dist. Make sure the build process copies it.');
-    process.exit(1);
-}
-console.log('✓ manifest.json found in dist/');
 
 try {
-    // Create ZIP archive using system zip command
-    // Create ZIP archive
-    console.log('   Zipping...');
+    console.log('   Creating archive with root dist/ folder...');
+
     if (process.platform === 'win32') {
-        const powershellCommand = `powershell -Command "Compress-Archive -Path 'dist\\*' -DestinationPath '${archivePath}' -Force"`;
-        execSync(powershellCommand, { stdio: 'inherit' });
+        // Use Windows tar.exe (available in Win10+) for standard ZIP creation
+        // We go to root and zip the 'dist' folder
+        const tarCommand = `tar.exe -ac -f "${archivePath}" dist`;
+        execSync(tarCommand, { cwd: rootDir, stdio: 'inherit' });
     } else {
-        // Use cd to flat zip the contents of dist
-        const zipCommand = `cd dist && zip -r "${archivePath}" . -x "*.map" "*.DS_Store"`;
-        execSync(zipCommand, { stdio: 'inherit' });
+        // Mac/Linux
+        const zipCommand = `zip -r "${archivePath}" dist -x "*.map" "*.DS_Store"`;
+        execSync(zipCommand, { cwd: rootDir, stdio: 'inherit' });
     }
 
-    console.log('✅ Package created successfully!');
-    console.log(`📁 Location: ${archivePath}`);
-    console.log('');
-    console.log('🚀 Next steps:');
-    console.log('   1. Upload the ZIP file to your ChurchTools instance');
-    console.log('   2. Go to Admin → Extensions → Upload Extension');
-    console.log('   3. Select the ZIP file and install');
-    console.log('');
-
-    // Show file size
+    console.log(`✅ Success! Archive created at: ${archivePath}`);
     const stats = fs.statSync(archivePath);
-    const fileSizeInBytes = stats.size;
-    const fileSizeInMB = (fileSizeInBytes / (1024 * 1024)).toFixed(2);
-    console.log(`📊 Package size: ${fileSizeInMB} MB`);
+    console.log(`📊 Size: ${(stats.size / 1024 / 1024).toFixed(2)} MB`);
 
 } catch (error) {
-    console.error('❌ Error creating package:', error.message);
+    console.error('❌ Packaging failed:', error.message);
     process.exit(1);
 }

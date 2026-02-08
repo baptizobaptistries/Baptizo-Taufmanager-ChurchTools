@@ -35,18 +35,43 @@ if (fs.existsSync(assetsDir)) {
         const content = fs.readFileSync(filePath, 'utf-8');
 
         if (file.endsWith('.js')) {
-            console.log(`   📦 Inlining JS: ${file}`);
+            console.log(`   📦 Processing JS: ${file}`);
             // Escape closing script tags to prevent breaking HTML
             const safeContent = content.replace(/<\/script>/g, '<\\/script>');
-            // Replace script tag
-            // Looking for src="./assets/filename" or src="/assets/filename"
-            const scriptRegex = new RegExp(`<script[^>]*src=["'].*?${file}["'][^>]*><\/script>`, 'g');
-            html = html.replace(scriptRegex, () => `<script>${safeContent}</script>`);
+            // Preserve attributes like type="module"
+            const scriptRegex = new RegExp(`<script([^>]*)src=["'].*?${file}["']([^>]*)><\/script>`, 'g');
+
+            const originalLength = html.length;
+            html = html.replace(scriptRegex, (match, p1, p2) => `<script${p1}${p2}>${safeContent}</script>`);
+
+            if (html.length !== originalLength) {
+                try {
+                    fs.unlinkSync(filePath);
+                    console.log(`   ✓ Inlined and removed ${file}`);
+                } catch (e) {
+                    console.warn(`   ⚠ Failed to remove ${file}:`, e.message);
+                }
+            } else {
+                console.warn(`   ⚠ Could not inline ${file} (tag not found in HTML)`);
+            }
+
         } else if (file.endsWith('.css')) {
-            console.log(`   🎨 Inlining CSS: ${file}`);
-            // Replace link tag
+            console.log(`   🎨 Processing CSS: ${file}`);
             const linkRegex = new RegExp(`<link[^>]*href=["'].*?${file}["'][^>]*>`, 'g');
+
+            const originalLength = html.length;
             html = html.replace(linkRegex, () => `<style>${content}</style>`);
+
+            if (html.length !== originalLength) {
+                try {
+                    fs.unlinkSync(filePath);
+                    console.log(`   ✓ Inlined and removed ${file}`);
+                } catch (e) {
+                    console.warn(`   ⚠ Failed to remove ${file}:`, e.message);
+                }
+            } else {
+                console.warn(`   ⚠ Could not inline ${file} (tag not found in HTML)`);
+            }
         }
     });
 } else {
@@ -57,13 +82,10 @@ if (fs.existsSync(assetsDir)) {
 fs.writeFileSync(finalHtmlPath, html);
 console.log('✅ Inlined assets and wrote to dist/index.html');
 
-// Delete legacy HTML and Assets folder (cleanup)
+// Delete legacy HTML cleanup
 try {
     fs.unlinkSync(legacyHtmlPath);
     console.log('🗑️  Removed index-legacy.html');
-
-    // Optional: remove assets dir if purely inlined
-    // fs.rmSync(assetsDir, { recursive: true, force: true });
 } catch (e) {
     console.warn('⚠️ Could not remove index-legacy.html', e);
 }

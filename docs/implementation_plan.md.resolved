@@ -1,0 +1,24 @@
+# Goal: Fix Windows Compatibility and ZIP Structure
+
+The goal is to ensure the build and deployment scripts work cross-platform (Windows & Mac) and produce a standard ChurchTools extension package.
+
+## Proposed Changes
+
+### Configuration
+#### [MODIFY] [package.json](file:///Users/mgoth/extensions/Taufmanager/package.json)
+- Replace `rm -rf` with a cross-platform command or a specialized script.
+
+#### [MODIFY] [package.js](file:///Users/mgoth/extensions/Taufmanager/scripts/package.js)
+- Fix the ZIP structure: Zip the **contents** of the `dist` folder instead of the folder itself.
+- Enhance cross-platform support for the `zip` command or use a fallback.
+
+## Verification Plan
+
+### Automated Tests
+- Run `npm run build:legacy` on Mac to ensure the build still works.
+- Run `npm run deploy:legacy` and check the ZIP structure:
+  - `unzip -l [zipfile]` should show [manifest.json](file:///Users/mgoth/extensions/Taufmanager/manifest.json) and [index.html](file:///Users/mgoth/extensions/Taufmanager/index.html) at the **root**, not inside a `dist/` folder.
+
+### Manual Verification
+- Have the friend on Windows test the new build.
+

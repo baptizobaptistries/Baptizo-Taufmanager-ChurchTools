@@ -9,19 +9,8 @@
 
 <body>
     <div id="app"></div>
-    <script type="module">
-        import { renderExtension, loadEntryPoint } from '/src/index.ts';
-
-        // Load and render the main entry point
-        (async () => {
-            try {
-                const entryPoint = await loadEntryPoint('main');
-                await renderExtension('app', entryPoint, {});
-            } catch (error) {
-                console.error('Failed to load extension:', error);
-            }
-        })();
-    </script>
+    <!-- Point directly to our simplified legacy main -->
+    <script type="module" src="/src/main-legacy.ts"></script>
 </body>
 
 </html>

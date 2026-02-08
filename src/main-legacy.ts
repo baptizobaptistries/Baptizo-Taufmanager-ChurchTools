@@ -1,47 +1,58 @@
+import { createApp } from 'vue';
+import Dashboard from './components/Dashboard.vue';
+import { churchtoolsClient } from '@churchtools/churchtools-client';
 
-import { renderExtension, loadEntryPoint } from './index';
+declare const window: Window &
+    typeof globalThis & {
+        settings?: {
+            base_url?: string;
+        };
+    };
 
-// Simple logger that works before UI is ready
-function log(msg: string) {
-    console.log('[Legacy Main] ' + msg);
+/**
+ * Legacy Bootstrapper for ChurchTools CCM
+ * This file replaces the complex renderExtension logic to avoid hangs in the legacy environment.
+ */
+console.log('[Baptizo Legacy] Initializing...');
+
+const init = async () => {
     try {
-        const el = document.getElementById('init-log');
-        if (el) el.innerHTML += msg + '<br>';
-    } catch (e) { }
-}
-
-(async () => {
-    try {
-        log('Legacy entry point initializing...');
-
-        // Wait for DOM
+        // 0. Wait for DOM (Safety for legacy environments)
         if (document.readyState === 'loading') {
             await new Promise(resolve => document.addEventListener('DOMContentLoaded', resolve));
         }
 
-        log('Loading "main" entry point...');
-        const entryPoint = await loadEntryPoint('main');
+        // 1. Detect Base URL (Critical for API calls)
+        const baseUrl = window.settings?.base_url ?? import.meta.env.VITE_BASE_URL ?? 'https://baptizo.church.tools/';
+        churchtoolsClient.setBaseUrl(baseUrl);
+        console.log('[Baptizo Legacy] Base URL:', baseUrl);
 
-        if (!entryPoint) {
-            throw new Error('Entry point "main" returned null/undefined');
-        }
+        // 2. Simple mounting
+        const app = createApp(Dashboard, {
+            // We pass a minimal user object since Dashboard expects it
+            user: {
+                is_admin: true,
+                firstName: 'User',
+                lastName: ''
+            },
+            onNavigate: (target: string) => {
+                console.log('[Baptizo Legacy] Navigating to:', target);
+            }
+        });
 
-        log('Entry point loaded. Mounting to #app...');
-        await renderExtension('app', entryPoint, {});
-
-        log('Mount successful');
-
-        // Hide loader on success
-        const loader = document.getElementById('init-loader');
-        if (loader) loader.style.display = 'none';
-
-    } catch (error: any) {
-        console.error('Legacy main error:', error);
-        log('ERROR: ' + error.message);
-
-        const loader = document.getElementById('init-loader');
-        if (loader) {
-            loader.innerHTML += `<div style="color:red; margin-top:10px; font-weight:bold">CRITICAL ERROR: ${error.message}</div>`;
+        app.mount('#app');
+        console.log('[Baptizo Legacy] App mounted successfully');
+    } catch (error) {
+        console.error('[Baptizo Legacy] Critical Error during initialization:', error);
+        const appEl = document.getElementById('app');
+        if (appEl) {
+            appEl.innerHTML = `<div style="padding: 20px; color: red; font-family: sans-serif;">
+                <h2>Fehler beim Laden</h2>
+                <p>${error instanceof Error ? error.message : String(error)}</p>
+                <p>Bitte lade die Seite neu oder kontaktiere den Administrator.</p>
+            </div>`;
         }
     }
-})();
+};
+
+init();
