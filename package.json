@@ -15,7 +15,7 @@
         "deploy": "npm run clean && npm run build && node scripts/deploy-extension.js",
         "deploy:simple": "npm run clean && npm run build && node scripts/package.js",
         "deploy:advanced": "npm run clean && npm run build && node scripts/package.js",
-        "deploy:legacy": "npm run clean && npm run build:legacy && node scripts/inline-assets.js && node scripts/package.js legacy"
+        "deploy:legacy": "npm run clean && npm run build:legacy && node scripts/prepare-legacy.js && node scripts/package.js legacy"
     },
     "dependencies": {
         "@churchtools/extension-points": "github:churchtools/churchtools-extension-points",
