@@ -1,0 +1,188 @@
+﻿import type { Person } from '../utils/ct-types';
+import type { ExtensionContext, EntryPoint, CleanupFunction } from '../types/extension';
+import { churchtoolsClient } from '@churchtools/churchtools-client';
+import { EventBus } from './event-bus';
+import manifest from '../../manifest.json';
+
+// Re-export types for convenience
+export type { ExtensionContext, EntryPoint, CleanupFunction };
+
+// only import reset.css in development mode to keep the production bundle small and to simulate CT environment
+if (import.meta.env.MODE === 'development') {
+    import('../utils/reset.css');
+}
+
+declare const window: Window &
+    typeof globalThis & {
+        settings: {
+            base_url?: string;
+        };
+    };
+
+const KEY = manifest.key;
+export { KEY };
+
+// Track initialization state
+let isInitialized = false;
+
+/**
+ * Initialize the ChurchTools client
+ */
+async function initializeChurchToolsClient(): Promise<void> {
+    if (isInitialized) {
+        return;
+    }
+
+    const baseUrl = window.settings?.base_url ?? import.meta.env.VITE_BASE_URL;
+
+    // Safety check: Ensure base URL is defined
+    if (!baseUrl) {
+        const errorMsg = 'Error: VITE_BASE_URL is not defined in .env file. Please create a .env file in the root directory with: VITE_BASE_URL=https://baptizo.church.tools/';
+        console.error(errorMsg);
+        throw new Error(errorMsg);
+    }
+
+    churchtoolsClient.setBaseUrl(baseUrl);
+
+    // Auto-login in development mode using Credentials or Token
+    if (import.meta.env.MODE === 'development') {
+        const username = import.meta.env.VITE_USERNAME;
+        const password = import.meta.env.VITE_PASSWORD;
+        const token = import.meta.env.VITE_LOGIN_TOKEN;
+
+        if (username && password) {
+            console.log('[Baptizo] Attempting login with credentials...');
+            try {
+                const result = await churchtoolsClient.post<any>('/login', {
+                    username,
+                    password
+                });
+                if (result.status === 'success') {
+                    console.log('[Baptizo] Ô£à Login successful');
+                } else {
+                    console.error('[Baptizo] ÔØî Login failed:', result);
+                }
+            } catch (e) {
+                console.error('[Baptizo] ÔØî Error during login:', e);
+            }
+        } else if (token) {
+            console.log('[Baptizo] Using Token-Auth...');
+            // ... (keep token logic as fallback)
+        } else {
+            console.warn('[Baptizo] ÔÜá No credentials or token provided in .env');
+        }
+    }
+
+    isInitialized = true;
+}
+
+/**
+ * Extension instance returned by renderExtension
+ * ChurchTools can use this to communicate with the extension
+ */
+export interface ExtensionInstance {
+    /** Emit events to the extension */
+    emit(event: string, ...data: any[]): void;
+    /** Listen to events from the extension */
+    on(event: string, handler: (...args: any[]) => void): void;
+    /** Unsubscribe from extension events */
+    off(event: string, handler: (...args: any[]) => void): void;
+    /** Cleanup the extension (calls cleanup function, removes all listeners) */
+    destroy(): Promise<void>;
+}
+
+/**
+ * Render an extension to a specific div using a custom entry point
+ *
+ * @param divId - The ID of the div element to render into
+ * @param entryPoint - The entry point function to execute
+ * @param data - Optional data to pass to the extension (specific to the extension point)
+ * @returns ExtensionInstance for bidirectional communication
+ *
+ * @example
+ * ```typescript
+ * // Render extension with data
+ * const instance = await renderExtension('calendar-div', calendarEntry, {
+ *   selectedDate: new Date(),
+ *   selectedTime: '14:00'
+ * });
+ *
+ * // ChurchTools listens to events from extension
+ * instance.on('date:suggest', ({ date, reason }) => {
+ *   console.log('Extension suggests:', date, reason);
+ *   updateDialogDate(date);
+ * });
+ *
+ * // ChurchTools emits events to extension
+ * instance.emit('date:changed', new Date());
+ *
+ * // Cleanup when done
+ * await instance.destroy();
+ * ```
+ */
+export async function renderExtension<TData = any>(
+    divId: string,
+    entryPoint: EntryPoint<TData>,
+    data?: TData
+): Promise<ExtensionInstance> {
+    // Initialize ChurchTools client if not already initialized
+    await initializeChurchToolsClient();
+
+    // Get the target element
+    const element = document.querySelector<HTMLElement>(`#${divId}`);
+    if (!element) {
+        throw new Error(`Element with id "${divId}" not found`);
+    }
+
+    // Fetch current user
+    const user = await churchtoolsClient.get<Person>('/whoami');
+
+    // Create event bus for bidirectional communication
+    const eventBusCTToExtension = new EventBus();
+    const eventBusExtensionToCT = new EventBus();
+
+    // Store cleanup function if extension returns one
+    let cleanupFunction: CleanupFunction | undefined;
+
+    // Create context
+    const context: ExtensionContext<TData> = {
+        churchtoolsClient,
+        user,
+        element,
+        KEY,
+        data: data as TData, // Use provided data or undefined
+        on: (event, handler) => eventBusCTToExtension.on(event, handler),
+        off: (event, handler) => eventBusCTToExtension.off(event, handler),
+        emit: (event, ...args) => eventBusExtensionToCT.emit(event, ...args),
+    };
+
+    // Execute entry point and capture cleanup function
+    const result = await entryPoint(context);
+    if (typeof result === 'function') {
+        cleanupFunction = result;
+    }
+
+    // Return extension instance for ChurchTools to interact with
+    return {
+        // ChurchTools can emit events TO the extension
+        emit: (event: string, ...args: any[]) => eventBusCTToExtension.emit(event, ...args),
+
+        // ChurchTools can listen to events FROM the extension
+        on: (event: string, handler: (...args: any[]) => void) => eventBusExtensionToCT.on(event, handler),
+
+        // ChurchTools can unsubscribe from extension events
+        off: (event: string, handler: (...args: any[]) => void) => eventBusExtensionToCT.off(event, handler),
+
+        // Cleanup: call extension cleanup, clear all event handlers
+        destroy: async () => {
+            if (cleanupFunction) {
+                await cleanupFunction();
+            }
+            eventBusCTToExtension.clear();
+            eventBusExtensionToCT.clear();
+        },
+    };
+}
+
+// Development mode initialization is handled by index.html
+// The HTML file loads entry points dynamically via the menu

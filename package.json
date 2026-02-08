@@ -4,7 +4,7 @@
     "version": "0.0.1",
     "type": "module",
     "scripts": {
-        "clean": "rm -rf dist",
+        "clean": "node scripts/clean.js",
         "dev": "vite",
         "dev:legacy": "vite --config vite.config.legacy.ts",
         "build": "tsc && vite build",
