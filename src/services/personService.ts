@@ -11,9 +11,9 @@ export class PersonService implements DataProvider {
 
     async getGroups(): Promise<BaptizoGroup[]> {
         // Diagnostic: What methods are available on the client?
-        const clientKeys = Object.keys(churchtoolsClient || {});
-        const hasDelete = typeof (churchtoolsClient as any).delete === 'function';
-        console.log(`[Baptizo] Client Diagnostic: Keys=[${clientKeys.join(', ')}], hasDelete=${hasDelete}`);
+        const client: any = churchtoolsClient;
+        const keys = Object.keys(client).filter(k => typeof client[k] === 'function');
+        console.log(`[Baptizo] Client Diagnostic: Methods=[${keys.join(', ')}], csrf=${!!(client.csrfToken || client._csrfToken || client.ax?.defaults?.headers?.common?.['x-csrf-token'])}`);
 
         const settings = await getAdminSettings();
 
@@ -288,16 +288,22 @@ export class PersonService implements DataProvider {
     async addPersonToGroup(personId: number, groupId: number): Promise<void> {
         console.log(`[Baptizo] Adding person ${personId} to group ${groupId}...`);
         try {
-            const ax = (churchtoolsClient as any).ax;
-            if (ax) {
-                // IMPORTANT: ax requires /api prefix!
-                await ax.put(`/api/groups/${groupId}/members/${personId}`, {
+            const client: any = churchtoolsClient;
+
+            // Try high-level client methods FIRST as they carry CSRF tokens automatically
+            if (typeof client.put === 'function') {
+                await client.put(`/groups/${groupId}/members/${personId}`, {
                     groupTypeRoleId: 22
                 });
             } else {
-                // Fallback to direct client
-                await (churchtoolsClient as any).put(`/api/groups/${groupId}/members/${personId}`, {
+                // FALLBACK: Use raw axios with MANUAL CSRF token
+                console.warn(`[Baptizo] client.put missing, falling back to ax with manual CSRF`);
+                const ax = client.ax || client;
+                const csrf = client.csrfToken || client._csrfToken || ax.defaults?.headers?.common?.['x-csrf-token'];
+                await ax.put(`/api/groups/${groupId}/members/${personId}`, {
                     groupTypeRoleId: 22
+                }, {
+                    headers: { 'x-csrf-token': csrf }
                 });
             }
             console.log(`[Baptizo] ✓ Successfully added person ${personId} to group ${groupId}.`);
@@ -310,13 +316,22 @@ export class PersonService implements DataProvider {
     async removePersonFromGroup(personId: number, groupId: number): Promise<void> {
         console.log(`[Baptizo] Removing person ${personId} from group ${groupId}...`);
         try {
-            const ax = (churchtoolsClient as any).ax;
-            if (ax) {
-                // IMPORTANT: ax requires /api prefix!
-                await ax.delete(`/api/groups/${groupId}/members/${personId}`);
+            const client: any = churchtoolsClient;
+
+            // Try high-level client methods FIRST: deleteApi is the name in @churchtools/churchtools-client
+            const deleteMethod = typeof client.deleteApi === 'function' ? client.deleteApi : (typeof client.delete === 'function' ? client.delete : (typeof client.del === 'function' ? client.del : null));
+
+            if (deleteMethod) {
+                console.log(`[Baptizo] Using high-level delete method: ${deleteMethod.name || 'anonymous'}`);
+                await deleteMethod.call(client, `/groups/${groupId}/members/${personId}`);
             } else {
-                // Fallback attempt: some environments might have weird issues with the generic client
-                await (churchtoolsClient as any).delete(`/api/groups/${groupId}/members/${personId}`);
+                // FALLBACK: Use raw axios with MANUAL CSRF token
+                console.warn(`[Baptizo] client.delete/deleteApi missing, falling back to ax with manual CSRF`);
+                const ax = client.ax || client;
+                const csrf = client.csrfToken || client._csrfToken || ax.defaults?.headers?.common?.['x-csrf-token'];
+                await ax.delete(`/api/groups/${groupId}/members/${personId}`, {
+                    headers: { 'x-csrf-token': csrf }
+                });
             }
             console.log(`[Baptizo] ✓ Successfully removed person ${personId} from group ${groupId}.`);
         } catch (e: any) {

@@ -58,7 +58,19 @@ export default ({ mode }: { mode: string }) => {
         chunkSizeWarningLimit: 100,
     };
 
+    const targetUrl = env.VITE_BASE_URL || 'https://baptizo.church.tools/';
+
     return defineConfig({
+        // server for development mode
+        server: {
+            proxy: {
+                '/api': {
+                    target: targetUrl,
+                    changeOrigin: true,
+                    secure: false, // In case of self-signed certs in dev
+                }
+            }
+        },
         // Explicitly set envDir to project root to ensure .env is loaded
         envDir: process.cwd(),
         // Explicitly define env vars for client (ensures injection into the bundle)
