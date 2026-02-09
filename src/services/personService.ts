@@ -10,6 +10,11 @@ import { getAdminSettings, getAppSettings, saveAppSettings } from '../lib/kv-sto
 export class PersonService implements DataProvider {
 
     async getGroups(): Promise<BaptizoGroup[]> {
+        // Diagnostic: What methods are available on the client?
+        const clientKeys = Object.keys(churchtoolsClient || {});
+        const hasDelete = typeof (churchtoolsClient as any).delete === 'function';
+        console.log(`[Baptizo] Client Diagnostic: Keys=[${clientKeys.join(', ')}], hasDelete=${hasDelete}`);
+
         const settings = await getAdminSettings();
 
         // If settings are missing or incomplete, return empty to trigger dashboard warning
@@ -260,10 +265,13 @@ export class PersonService implements DataProvider {
     async addPersonToGroup(personId: number, groupId: number): Promise<void> {
         console.log(`[Baptizo] Adding person ${personId} to group ${groupId}...`);
         try {
-            const res = await (churchtoolsClient as any).put(`/groups/${groupId}/members/${personId}`, {
-                groupTypeRoleId: 22
+            // Using a more generic request approach to ensure compatibility
+            const res = await (churchtoolsClient as any).axiosInstance.request({
+                method: 'PUT',
+                url: `/groups/${groupId}/members/${personId}`,
+                data: { groupTypeRoleId: 22 }
             });
-            console.log(`[Baptizo] ✓ Successfully added person ${personId} to group ${groupId}`, res?.data || res || '');
+            console.log(`[Baptizo] ✓ Successfully added person ${personId} to group ${groupId}. Status: ${res.status}`);
         } catch (e: any) {
             console.error(`[Baptizo] ❌ Failed to add person ${personId} to group ${groupId}:`, e.response?.data || e.message);
         }
@@ -273,13 +281,24 @@ export class PersonService implements DataProvider {
     async removePersonFromGroup(personId: number, groupId: number): Promise<void> {
         console.log(`[Baptizo] Removing person ${personId} from group ${groupId}...`);
         try {
-            const res = await (churchtoolsClient as any).delete(`/groups/${groupId}/members/${personId}`);
-            console.log(`[Baptizo] ✓ Successfully removed person ${personId} from group ${groupId}`, res?.data || res || '');
+            // Using axiosInstance directly if available, or the generic request method
+            const res = await (churchtoolsClient as any).axiosInstance.request({
+                method: 'DELETE',
+                url: `/groups/${groupId}/members/${personId}`
+            });
+            console.log(`[Baptizo] ✓ Successfully removed person ${personId} from group ${groupId}. Status: ${res.status}`);
         } catch (e: any) {
             if (e.response?.status === 404) {
                 console.log(`[Baptizo] Person ${personId} not in group ${groupId}, skip removal.`);
             } else {
                 console.error(`[Baptizo] ❌ Failed to remove person ${personId} from group ${groupId}:`, e.response?.data || e.message);
+                // Fallback attempt: some environments might have weird issues with the generic client
+                try {
+                    await (churchtoolsClient as any).delete(`/groups/${groupId}/members/${personId}`);
+                    console.log(`[Baptizo] ✓ Retry removal success via .delete()`);
+                } catch (e2) {
+                    console.error('[Baptizo] ❌ Retry removal also failed.');
+                }
             }
         }
     }
