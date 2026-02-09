@@ -290,12 +290,13 @@ export class PersonService implements DataProvider {
         try {
             const ax = (churchtoolsClient as any).ax;
             if (ax) {
-                await ax.put(`/groups/${groupId}/members/${personId}`, {
+                // IMPORTANT: ax requires /api prefix!
+                await ax.put(`/api/groups/${groupId}/members/${personId}`, {
                     groupTypeRoleId: 22
                 });
             } else {
                 // Fallback to direct client
-                await (churchtoolsClient as any).put(`/groups/${groupId}/members/${personId}`, {
+                await (churchtoolsClient as any).put(`/api/groups/${groupId}/members/${personId}`, {
                     groupTypeRoleId: 22
                 });
             }
@@ -311,10 +312,11 @@ export class PersonService implements DataProvider {
         try {
             const ax = (churchtoolsClient as any).ax;
             if (ax) {
-                await ax.delete(`/groups/${groupId}/members/${personId}`);
+                // IMPORTANT: ax requires /api prefix!
+                await ax.delete(`/api/groups/${groupId}/members/${personId}`);
             } else {
                 // Fallback attempt: some environments might have weird issues with the generic client
-                await (churchtoolsClient as any).delete(`/groups/${groupId}/members/${personId}`);
+                await (churchtoolsClient as any).delete(`/api/groups/${groupId}/members/${personId}`);
             }
             console.log(`[Baptizo] ✓ Successfully removed person ${personId} from group ${groupId}.`);
         } catch (e: any) {
