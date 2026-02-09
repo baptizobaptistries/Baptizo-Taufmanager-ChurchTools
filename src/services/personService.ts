@@ -234,20 +234,32 @@ export class PersonService implements DataProvider {
 
             // INSTANT GROUP SYNC: If baptism date was updated, trigger group reconciliation
             if (fields.getauft_am !== undefined) {
+                console.log(`[Baptizo] ⚠ Sync Trigger: Paul Hartmann case or similar. getauft_am=${fields.getauft_am}`);
+
+                // SAFETY: Skip Admin Stefan (PID 1) also in instant update
+                if (personId === 1) {
+                    console.log(`[Baptizo] 🛡 Admin Protection: Skipping group move for PID 1`);
+                    return;
+                }
+
                 const settings = await getAdminSettings();
+                console.log(`[Baptizo] Settings loaded for sync:`, settings ? 'YES' : 'NO');
+
                 if (settings?.interestGroupId && settings?.baptizedGroupId) {
                     const interestId = parseInt(settings.interestGroupId);
                     const baptizedId = parseInt(settings.baptizedGroupId);
 
                     if (fields.getauft_am) {
-                        // Move to Baptized
+                        console.log(`[Baptizo] ➔ Moving to Baptized group (Add ${baptizedId}, Remove ${interestId})`);
                         await this.addPersonToGroup(personId, baptizedId);
                         await this.removePersonFromGroup(personId, interestId);
                     } else {
-                        // Move back to Interest
+                        console.log(`[Baptizo] ➔ Moving to Interest group (Add ${interestId}, Remove ${baptizedId})`);
                         await this.addPersonToGroup(personId, interestId);
                         await this.removePersonFromGroup(personId, baptizedId);
                     }
+                } else {
+                    console.warn(`[Baptizo] ❌ Sync skipped: Group IDs missing in settings.`);
                 }
             }
         } catch (error) {
@@ -276,11 +288,17 @@ export class PersonService implements DataProvider {
     async addPersonToGroup(personId: number, groupId: number): Promise<void> {
         console.log(`[Baptizo] Adding person ${personId} to group ${groupId}...`);
         try {
-            // Using internal axios instance (ax) for maximum reliability across environments
-            const ax = (churchtoolsClient as any).ax || (churchtoolsClient as any);
-            await ax.put(`/groups/${groupId}/members/${personId}`, {
-                groupTypeRoleId: 22
-            });
+            const ax = (churchtoolsClient as any).ax;
+            if (ax) {
+                await ax.put(`/groups/${groupId}/members/${personId}`, {
+                    groupTypeRoleId: 22
+                });
+            } else {
+                // Fallback to direct client
+                await (churchtoolsClient as any).put(`/groups/${groupId}/members/${personId}`, {
+                    groupTypeRoleId: 22
+                });
+            }
             console.log(`[Baptizo] ✓ Successfully added person ${personId} to group ${groupId}.`);
         } catch (e: any) {
             console.error(`[Baptizo] ❌ Failed to add person ${personId} to group ${groupId}:`, e.response?.data || e.message);
@@ -291,8 +309,13 @@ export class PersonService implements DataProvider {
     async removePersonFromGroup(personId: number, groupId: number): Promise<void> {
         console.log(`[Baptizo] Removing person ${personId} from group ${groupId}...`);
         try {
-            const ax = (churchtoolsClient as any).ax || (churchtoolsClient as any);
-            await ax.delete(`/groups/${groupId}/members/${personId}`);
+            const ax = (churchtoolsClient as any).ax;
+            if (ax) {
+                await ax.delete(`/groups/${groupId}/members/${personId}`);
+            } else {
+                // Fallback attempt: some environments might have weird issues with the generic client
+                await (churchtoolsClient as any).delete(`/groups/${groupId}/members/${personId}`);
+            }
             console.log(`[Baptizo] ✓ Successfully removed person ${personId} from group ${groupId}.`);
         } catch (e: any) {
             if (e.response?.status === 404) {
