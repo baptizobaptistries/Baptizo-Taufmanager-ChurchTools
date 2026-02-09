@@ -1291,6 +1291,13 @@ onMounted(() => loadData());
   background-color: #1a1a1a;
   min-height: 100vh; /* Full viewport height to prevent white space */
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  box-sizing: border-box;
+  max-width: 100%;
+  overflow-x: hidden; /* Prevent horizontal scroll causing perceived off-center */
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
 }
 
 /* Header */

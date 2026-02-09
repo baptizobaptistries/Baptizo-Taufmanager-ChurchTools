@@ -60,62 +60,64 @@ export class PersonService implements DataProvider {
             // Map to BaptizoPerson - Sequential for stability
             const members: BaptizoPerson[] = [];
 
-            for (const m of ctPersons) {
-                // Group member has personId but person object is just a summary
-                // Must fetch full person details to get custom fields!
-                let personDetail: any;
-                try {
-                    personDetail = await churchtoolsClient.get<any>(`/persons/${m.personId}`);
-                } catch (e) {
-                    console.error(`[Baptizo] Failed to fetch person ${m.personId} in group ${groupId}`, e);
-                    continue;
-                }
+            // Batch processing to avoid timeouts (N+1 problem)
+            const BATCH_SIZE = 5;
 
-                // ChurchTools custom fields are at root level of person detail
-                const fields: BaptizoFields = {
-                    seminar_besucht_am: personDetail.taufmanager_seminar || null,
-                    getauft_am: personDetail.taufmanager_taufe || null,
-                    urkunde_ueberreicht: personDetail.taufmanager_urkunde || null,
-                    in_gemeinde_integriert: personDetail.taufmanager_integration || null,
-                    taufmanager_onboarding: personDetail.taufmanager_onboarding || null,
-                    taufmanager_offboarding: personDetail.taufmanager_offboarding || null
-                };
 
-                // CRITICAL: Skip persons with offboarding date - they left the Taufmanager
-                if (personDetail.taufmanager_offboarding) {
-                    continue;
-                }
+            for (let i = 0; i < ctPersons.length; i += BATCH_SIZE) {
+                const batch = ctPersons.slice(i, i + BATCH_SIZE);
+                console.log(`[Baptizo] Processing batch ${i / BATCH_SIZE + 1} / ${Math.ceil(ctPersons.length / BATCH_SIZE)}`);
 
-                // Entry date fallback logic:
-                // 1. taufmanager_onboarding (Explicit Date)
-                // 2. group member "comment" (Legacy Taufmanager stores entry date there)
-                // 3. group member "memberStartDate" (CT System Date)
-                let entryDate = personDetail.taufmanager_onboarding; // Prio 1
-
-                if (!entryDate && m.comment) {
-                    // Start date is often in comment for legacy reasons
-                    // Format check YYYY-MM-DD
-                    if (m.comment.match(/^\d{4}-\d{2}-\d{2}$/)) {
-                        entryDate = m.comment;
+                await Promise.all(batch.map(async (m) => {
+                    let personDetail: any;
+                    try {
+                        personDetail = await churchtoolsClient.get<any>(`/persons/${m.personId}`);
+                    } catch (e) {
+                        console.error(`[Baptizo] Failed to fetch person ${m.personId} in group ${groupId}`, e);
+                        return; // Skip this person
                     }
-                }
 
-                if (!entryDate) {
-                    entryDate = m.memberStartDate; // Fallback
-                }
+                    // ChurchTools custom fields are at root level of person detail
+                    const fields: BaptizoFields = {
+                        seminar_besucht_am: personDetail.taufmanager_seminar || null,
+                        getauft_am: personDetail.taufmanager_taufe || null,
+                        urkunde_ueberreicht: personDetail.taufmanager_urkunde || null,
+                        in_gemeinde_integriert: personDetail.taufmanager_integration || null,
+                        taufmanager_onboarding: personDetail.taufmanager_onboarding || null,
+                        taufmanager_offboarding: personDetail.taufmanager_offboarding || null
+                    };
 
-                members.push({
-                    id: m.personId || personDetail.id,
-                    firstName: personDetail.firstName || 'Unknown',
-                    lastName: personDetail.lastName || 'Unknown',
-                    status: m.groupMemberStatus === 'inactive' ? 'inactive' : 'active',
-                    entry_date: entryDate,
-                    fields,
-                    imageUrl: personDetail.imageUrl || `https://ui-avatars.com/api/?name=${personDetail.firstName}+${personDetail.lastName}&background=random`,
-                    email: personDetail.email || null,
-                    mobile: personDetail.mobile || null,
-                    phone: personDetail.phone || null
-                });
+                    // CRITICAL: Skip persons with offboarding date - they left the Taufmanager
+                    if (personDetail.taufmanager_offboarding) {
+                        return;
+                    }
+
+                    // Entry date fallback logic:
+                    let entryDate = personDetail.taufmanager_onboarding; // Prio 1
+
+                    if (!entryDate && m.comment) {
+                        if (m.comment.match(/^\d{4}-\d{2}-\d{2}$/)) {
+                            entryDate = m.comment;
+                        }
+                    }
+
+                    if (!entryDate) {
+                        entryDate = m.memberStartDate; // Fallback
+                    }
+
+                    members.push({
+                        id: m.personId || personDetail.id,
+                        firstName: personDetail.firstName || 'Unknown',
+                        lastName: personDetail.lastName || 'Unknown',
+                        status: m.groupMemberStatus === 'inactive' ? 'inactive' : 'active',
+                        entry_date: entryDate,
+                        fields,
+                        imageUrl: personDetail.imageUrl || `https://ui-avatars.com/api/?name=${personDetail.firstName}+${personDetail.lastName}&background=random`,
+                        email: personDetail.email || null,
+                        mobile: personDetail.mobile || null,
+                        phone: personDetail.phone || null
+                    });
+                }));
             }
 
             return {
