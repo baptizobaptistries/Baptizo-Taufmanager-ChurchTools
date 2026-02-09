@@ -395,6 +395,9 @@ export class PersonService implements DataProvider {
 
         try {
             // 1. Fetch current members of target groups for efficient lookup
+            const interestRes = await churchtoolsClient.get<any>(`/groups/${interestGroupId}/members`);
+            const baptizedRes = await churchtoolsClient.get<any>(`/groups/${baptizedGroupId}/members`);
+
             // IDENTIFY LEADERS/ADMINS: Anyone who hasn't role 22 (Participant)
             // or is PID 1 (Stefan) should be excluded from sync.
             const interestExclusions = new Set((interestRes.data || interestRes || [])
@@ -415,7 +418,7 @@ export class PersonService implements DataProvider {
                 .map((m: any) => m.personId));
 
             // Combined exclusion list for the search/discovery phase
-            const allExclusions = new Set([...interestExclusions, ...baptizedExclusions]);
+            const allExclusions = new Set<any>([...Array.from(interestExclusions), ...Array.from(baptizedExclusions)]);
 
             // 2. Iterate ALL persons (Pagination)
             let page = 1;
