@@ -109,7 +109,9 @@ export class PersonService implements DataProvider {
                         id: m.personId || personDetail.id,
                         firstName: personDetail.firstName || 'Unknown',
                         lastName: personDetail.lastName || 'Unknown',
-                        status: m.groupMemberStatus === 'inactive' ? 'inactive' : 'active',
+                        // Standard Status Mapping: Use the existing ChurchTools person field
+                        // Discovery: ID 196 (taufmanager_status) -> 4 = Aktiv, 5 = Inaktiv
+                        status: (String(personDetail.taufmanager_status) === '5') ? 'inactive' : 'active',
                         entry_date: entryDate,
                         fields,
                         imageUrl: personDetail.imageUrl || `https://ui-avatars.com/api/?name=${personDetail.firstName}+${personDetail.lastName}&background=random`,
@@ -169,9 +171,25 @@ export class PersonService implements DataProvider {
         }
         if (fields.taufmanager_onboarding !== undefined) {
             ctFields['taufmanager_onboarding'] = fields.taufmanager_onboarding;
+            // If we are setting an onboarding date, default status to "Aktiv" (ID 4) 
+            // but only if a status isn't already being explicitly set in this update
+            if (fields.taufmanager_onboarding && (fields as any).status === undefined) {
+                ctFields['taufmanager_status'] = 4;
+            }
         }
         if (fields.taufmanager_offboarding !== undefined) {
             ctFields['taufmanager_offboarding'] = fields.taufmanager_offboarding;
+            // Clear status field on offboarding
+            if (fields.taufmanager_offboarding) {
+                ctFields['taufmanager_status'] = null;
+            }
+        }
+
+        // Internal status mapping to ChurchTools numerical IDs
+        // Discovery: 4 = Aktiv, 5 = Inaktiv
+        if ((fields as any).status !== undefined) {
+            const statusVal = (fields as any).status;
+            ctFields['taufmanager_status'] = statusVal === 'inactive' ? 5 : (statusVal === 'active' ? 4 : null);
         }
 
         console.log(`[Baptizo] Updating person ${personId} with fields:`, ctFields);
@@ -188,50 +206,51 @@ export class PersonService implements DataProvider {
     async updatePerson(updatedPerson: BaptizoPerson): Promise<void> {
         console.log(`[Baptizo] Saving Person ${updatedPerson.id}...`);
 
-        // 1. Update Custom Fields (Dates etc.)
-        await this.updatePersonFields(updatedPerson.id, updatedPerson.fields);
-
-        if (updatedPerson.status && updatedPerson.status !== 'removed') {
-            await this.updatePersonStatus(updatedPerson.id, updatedPerson.status);
-        }
+        // 1. Update Custom Fields (Dates and Status)
+        await this.updatePersonFields(updatedPerson.id, {
+            ...updatedPerson.fields,
+            status: updatedPerson.status as any // Pass status for mapping to CT numerical ID
+        } as Partial<BaptizoFields>);
     }
 
-    private async updatePersonStatus(personId: number, status: 'active' | 'inactive'): Promise<void> {
-        const settings = await getAdminSettings();
-        if (!settings) return;
-
-        // Map 'active'/'inactive' to CT Group Member Status IDs
-        // Usually: 1 = Active, 3 = Inactive (Standard ChurchTools)
-        // We verify this assumption or make it configurable later.
-        const statusId = status === 'active' ? 1 : 3; // 3 is commonly "Passive" or "Inactive"
-
-        const targetGroups = [
-            parseInt(settings.interestGroupId),
-            parseInt(settings.baptizedGroupId)
-        ];
-
-        for (const groupId of targetGroups) {
-            if (!groupId) continue;
-            try {
-                // Check if person is in this group
-                const groupResponse = await churchtoolsClient.get<any>(`/groups/${groupId}/members/${personId}`).catch(() => null);
-
-                if (groupResponse) {
-                    console.log(`[Baptizo] Updating status for person ${personId} in group ${groupId} to ${status} (${statusId})`);
-                    // API FIX: Use PATCH for updates (PUT is deprecated)
-                    await churchtoolsClient.patch(`/groups/${groupId}/members/${personId}`, {
-                        groupMemberStatusId: statusId
-                    });
-                }
-            } catch (e) {
-                console.warn(`[Baptizo] Failed to update status for person ${personId} in group ${groupId}`, e);
-            }
-        }
-    }
+    // Status update logic moved to updatePersonFields (direct field sync)
 
     async deletePerson(id: number): Promise<void> {
         // Not implemented for safety in v1
         console.warn(`[Baptizo] Delete person ${id} not implemented in real provider`);
+    }
+
+    // Helper: Add person to group (Participant role usually 23 or 2, checking masterdata or using default)
+    async addPersonToGroup(personId: number, groupId: number): Promise<void> {
+        console.log(`[Baptizo] Adding person ${personId} to group ${groupId}...`);
+        try {
+            await churchtoolsClient.post(`/groups/${groupId}/members`, {
+                personId: personId,
+                groupTypeRoleId: 23 // Standard Participant role in many CT setups, adjustment might be needed
+            });
+        } catch (e: any) {
+            // If already in group, ignore 400/409
+            if (e.response?.status === 400 || e.response?.status === 409) {
+                console.log(`[Baptizo] Person ${personId} is already in group ${groupId}`);
+            } else {
+                console.error(`[Baptizo] Failed to add person ${personId} to group ${groupId}`, e);
+            }
+        }
+    }
+
+    // Helper: Remove person from group
+    async removePersonFromGroup(personId: number, groupId: number): Promise<void> {
+        console.log(`[Baptizo] Removing person ${personId} from group ${groupId}...`);
+        try {
+            // Using a generic request approach if .delete is missing in the client type
+            await (churchtoolsClient as any).delete(`/groups/${groupId}/members/${personId}`);
+        } catch (e: any) {
+            if (e.response?.status === 404) {
+                console.log(`[Baptizo] Person ${personId} not in group ${groupId}, skip removal.`);
+            } else {
+                console.error(`[Baptizo] Failed to remove person ${personId} from group ${groupId}`, e);
+            }
+        }
     }
 
     // Settings (Email templates etc - stored in KV Store)
@@ -311,21 +330,26 @@ export class PersonService implements DataProvider {
         }
     }
 
-    async runGlobalDiscoveryAndSync(): Promise<{ addedToInterest: number; addedToBaptized: number; removedFromInterest: number }> {
+    async runGlobalDiscoveryAndSync(): Promise<{ addedToInterest: number; addedToBaptized: number; removedFromInterest: number; realOrphans: string[] }> {
         const settings = await getAdminSettings();
-        if (!settings) return { addedToInterest: 0, addedToBaptized: 0, removedFromInterest: 0 };
+        if (!settings || !settings.interestGroupId || !settings.baptizedGroupId) {
+            return { addedToInterest: 0, addedToBaptized: 0, removedFromInterest: 0, realOrphans: [] };
+        }
 
-        console.log('[Baptizo] Starting Global Discovery & Sync...');
+        console.log('[Baptizo] Starting Active Global Sync & Discovery...');
 
-        let stats = { addedToInterest: 0, addedToBaptized: 0, removedFromInterest: 0 };
+        const interestGroupId = parseInt(settings.interestGroupId);
+        const baptizedGroupId = parseInt(settings.baptizedGroupId);
+
+        let stats = { addedToInterest: 0, addedToBaptized: 0, removedFromInterest: 0, realOrphans: [] as string[] };
 
         try {
             // 1. Fetch current members of target groups for efficient lookup
-            const interestGroup = await this.fetchGroupInternal(parseInt(settings.interestGroupId), 'Interest');
-            const baptizedGroup = await this.fetchGroupInternal(parseInt(settings.baptizedGroupId), 'Baptized');
+            const interestRes = await churchtoolsClient.get<any>(`/groups/${interestGroupId}/members`);
+            const baptizedRes = await churchtoolsClient.get<any>(`/groups/${baptizedGroupId}/members`);
 
-            const interestMemberIds = new Set(interestGroup.members.map(m => m.id));
-            const baptizedMemberIds = new Set(baptizedGroup.members.map(m => m.id));
+            const interestMemberIds = new Set((interestRes.data || interestRes || []).map((m: any) => m.personId));
+            const baptizedMemberIds = new Set((baptizedRes.data || baptizedRes || []).map((m: any) => m.personId));
 
             // 2. Iterate ALL persons (Pagination)
             let page = 1;
@@ -333,174 +357,82 @@ export class PersonService implements DataProvider {
             let hasMore = true;
 
             while (hasMore) {
-                // IMPORTANT: Use /persons endpoint (v2) which seems to work relative to baseURL
-                // ADDED: status_ids to filter for active+inactive+archive to find everyone
-                // IDs: 1 (active), 2 (archive), 3 (inactive) - standardized in CT usually
-                // Safe approach: status_ids[]=active&status_ids[]=inactive
-
-                // DEBUG: Inspect Base URL to prevent double slashes
-                // @ts-ignore
-                const baseUrl = churchtoolsClient.ax?.defaults?.baseURL || 'UNKNOWN';
-
-                // Construct path carefully. User requested /api/persons check.
-                // Note: churchtoolsClient adds /api prefix automatically!
-                // IMPORTANT: Add include=properties to get custom fields!
                 const endpoint = '/persons';
                 const query = `limit=${limit}&page=${page}&include=properties`;
-                const url = `${endpoint}?${query}`;
+                const response = await churchtoolsClient.get<any>(`${endpoint}?${query}`);
 
-                console.log(`[Baptizo] DEBUG URL Config: Base: '${baseUrl}', Request: '${url}'`);
-
-                const response = await churchtoolsClient.get<any>(url);
-
-                // DEBUG: Log raw response structure
-                console.log('[Baptizo] RAW Response (first 500 chars):', JSON.stringify(response).substring(0, 500));
-
-                // API returns persons as direct array, NOT wrapped in {data:[]}
                 const persons: any[] = Array.isArray(response) ? response : (response.data || []);
-
-                console.log(`[Baptizo] Page ${page}: Received ${persons.length} persons.`);
-                // DEBUG: Log Meta to see total count (only if wrapped response)
-                if (response.meta) {
-                    console.log('[Baptizo] API Meta:', response.meta);
-                }
-
                 if (persons.length === 0) {
                     hasMore = false;
                     break;
                 }
 
-                for (const [index, p] of persons.entries()) {
+                for (const p of persons) {
                     const pid = p.id;
+                    const name = `${p.firstName} ${p.lastName}`;
 
-                    // ChurchTools: /persons list doesn't include custom fields
-                    // Must fetch individual person to get them!
-                    let personDetail: any;
+                    // Detail fetch for custom fields
+                    let detail: any;
                     try {
-                        personDetail = await churchtoolsClient.get<any>(`/persons/${pid}`);
+                        detail = await churchtoolsClient.get<any>(`/persons/${pid}`);
                     } catch (e) {
-                        console.error(`[Baptizo] Failed to fetch details for person ${pid}`, e);
                         continue;
                     }
 
-                    // Custom fields might be in 'fields', 'properties', or root level
-                    const fields = personDetail.fields || personDetail.properties || personDetail || {};
+                    const hasOnboarding = !!detail.taufmanager_onboarding;
+                    const hasOffboarding = !!detail.taufmanager_offboarding;
+                    const hasBaptismDate = !!detail.taufmanager_taufe;
 
-                    // DEBUG: Log first person's full structure to find where custom fields are
-                    if (page === 1 && index === 0) {
-                        console.log('[Baptizo] DEBUG CHECK - Settings IDs:', {
-                            seminar: settings.seminarDateId,
-                            baptism: settings.baptismDateId,
-                            certificate: settings.certificateDateId,
-                            integration: settings.integratedDateId,
-                            status: settings.statusFieldId
-                        });
-                        console.log('[Baptizo] DEBUG CHECK - First Person FULL Detail Object:', personDetail);
-                        console.log('[Baptizo] DEBUG CHECK - First Person Fields/Properties (Keys):', Object.keys(fields));
-                        console.log('[Baptizo] DEBUG CHECK - First Person Fields/Properties (Full):', fields);
+                    const inInterest = interestMemberIds.has(pid);
+                    const inBaptized = baptizedMemberIds.has(pid);
 
-                        // DEEP SEARCH: Find where '2023-08-12' is hiding!
-                        const jsonStr = JSON.stringify(personDetail);
-                        if (jsonStr.includes('2023')) {
-                            console.log('[Baptizo] FOUND DATE in object! Full JSON:', jsonStr);
-                            // Find the key
-                            for (const key of Object.keys(personDetail)) {
-                                const val = JSON.stringify(personDetail[key]);
-                                if (val && val.includes('2023')) {
-                                    console.log(`[Baptizo] DATE FOUND IN KEY: '${key}' => ${val}`);
-                                }
+                    // CASE 1: Enrollment Diagnostic - No onboarding date at all
+                    if (!hasOnboarding && !hasOffboarding && !inInterest && !inBaptized) {
+                        // This person has no onboarding date but maybe they should? 
+                        // These are the "Real Orphans" requested by the user.
+                        // For now we just report them if they have any other taufmanager data
+                        if (detail.taufmanager_seminar || detail.taufmanager_taufe) {
+                            stats.realOrphans.push(`${name} (ID ${pid})`);
+                        }
+                    }
+
+                    // CASE 2: Active Participant Sync
+                    if (hasOnboarding && !hasOffboarding) {
+                        if (hasBaptismDate) {
+                            // Should be in Baptized group
+                            if (!inBaptized) {
+                                await this.addPersonToGroup(pid, baptizedGroupId);
+                                stats.addedToBaptized++;
+                            }
+                            // Should NOT be in Interest group
+                            if (inInterest) {
+                                await this.removePersonFromGroup(pid, interestGroupId);
+                                stats.removedFromInterest++;
                             }
                         } else {
-                            console.log('[Baptizo] NO DATE FOUND - personDetail does NOT contain 2023');
-                        }
-                    }
-
-                    // Check Fields - HARD-MAPPED to actual ChurchTools field names!
-                    // Keys are at ROOT level of personDetail, NOT in a "fields" object
-                    const hasSeminar = !!personDetail.taufmanager_seminar;
-                    const hasBaptism = !!personDetail.taufmanager_taufe; // TAUFE => Group 16
-                    const hasCertificate = !!personDetail.taufmanager_urkunde;
-                    const hasIntegration = !!personDetail.taufmanager_integration;
-                    const hasStatus = !!personDetail.taufmanager_status;
-
-                    // Debug log for first few persons
-                    if (index < 3) {
-                        console.log(`[Baptizo] Person ${pid} (${personDetail.firstName}): seminar=${hasSeminar}, taufe=${hasBaptism}, urkunde=${hasCertificate}, integration=${hasIntegration}, status=${hasStatus}`);
-                    }
-
-                    // LOGIC:
-
-                    // Case A: Has Baptism Date (187) -> MUST be in Group 16 (Baptized)
-                    if (hasBaptism) {
-                        // Ensure in Group 16
-                        if (!baptizedMemberIds.has(pid)) {
-                            console.log(`[Baptizo] [SYNC] Found Baptized (ID ${pid}): adding to Group ${settings.baptizedGroupId}`);
-                            try {
-                                // API FIX: Use POST to add member (PUT is deprecated)
-                                const response = await churchtoolsClient.post(`/groups/${settings.baptizedGroupId}/members`, {
-                                    personId: pid,
-                                    groupMemberStatusId: 1 // 1 = active member
-                                });
-                                console.log(`[Baptizo] POST response for ${pid}:`, response);
-                                stats.addedToBaptized++;
-                                baptizedMemberIds.add(pid);
-                            } catch (e) {
-                                console.error(`[Baptizo] Failed to add ${pid} to Baptized group`, e);
-                            }
-                        }
-
-                        // Ensure NOT in Group 13
-                        if (interestMemberIds.has(pid)) {
-                            console.log(`[Baptizo] [SYNC] Removing ${p.firstName} ${p.lastName} from Interest Group (${settings.interestGroupId}) because they are baptized.`);
-                            try {
-                                await churchtoolsClient.deleteApi(`/groups/${settings.interestGroupId}/members/${pid}`);
-                                stats.removedFromInterest++;
-                                interestMemberIds.delete(pid);
-                            } catch (e) {
-                                console.error(`[Baptizo] Failed to remove ${pid} from Interest group`, e);
-                            }
-                        }
-                    }
-                    // Case B: NO Baptism Date, but Has Other Milestones -> MUST be in Group 13 (Interest)
-                    else if (hasSeminar || hasCertificate || hasIntegration || hasStatus) {
-                        const ininterest = interestMemberIds.has(pid);
-                        const inbaptized = baptizedMemberIds.has(pid);
-
-                        if (!ininterest && !inbaptized) {
-                            console.log(`[Baptizo] [SYNC] Found Lost candidate: ${personDetail.firstName} ${personDetail.lastName}. Adding to Interest Group (${settings.interestGroupId})`);
-                            try {
-                                // API FIX: Use POST to add member (PUT is deprecated)
-                                const response = await churchtoolsClient.post(`/groups/${settings.interestGroupId}/members`, {
-                                    personId: pid,
-                                    groupMemberStatusId: 1 // 1 = active member
-                                });
-                                console.log(`[Baptizo] POST response for ${pid}:`, response);
+                            // Should be in Interest group
+                            if (!inInterest) {
+                                await this.addPersonToGroup(pid, interestGroupId);
                                 stats.addedToInterest++;
-                                interestMemberIds.add(pid);
-                            } catch (e) {
-                                console.error(`[Baptizo] Failed to add ${pid} to Interest group`, e);
+                            }
+                            // Should NOT be in Baptized group
+                            if (inBaptized) {
+                                await this.removePersonFromGroup(pid, baptizedGroupId);
+                                // Optional: stats for removal from baptized?
                             }
                         }
                     }
                 }
 
-                // Check pagination meta
-                if (response.meta && response.meta.pagination) {
-                    if (page >= response.meta.pagination.lastPage) {
-                        hasMore = false;
-                    }
-                } else {
-                    // Fallback if meta missing
-                    if (persons.length < limit) hasMore = false;
-                }
+                if (persons.length < limit) hasMore = false;
                 page++;
             }
 
         } catch (error) {
-            console.error('[Baptizo] Auto-Sync Failed:', error);
+            console.error('[Baptizo] Sync Failed:', error);
         }
 
-        console.log('[Baptizo] Auto-Sync Complete. Stats:', stats);
+        console.log('[Baptizo] Sync Complete:', stats);
         return stats;
     }
 }

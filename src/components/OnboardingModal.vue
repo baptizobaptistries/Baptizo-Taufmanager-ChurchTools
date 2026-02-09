@@ -31,7 +31,13 @@
                 class="search-result-item"
                 @click="selectPerson(person)"
               >
-                  <img :src="person.imageUrl" class="result-avatar" />
+                  <div 
+                    class="avatar-small"
+                    :style="{ backgroundColor: '#92C9D6', color: '#1a1a1a' }"
+                  >
+                    <span v-if="!person.imageUrl || person.imageUrl.includes('ui-avatars') || person.imageUrl.includes('dicebear')" class="initials-small">{{ getInitials(person) }}</span>
+                    <img v-else :src="person.imageUrl" alt="Avatar" class="avatar-img-small" />
+                  </div>
                   <div class="result-info">
                       <div class="result-name">{{ person.firstName }} {{ person.lastName }}</div>
                       <div class="result-meta">ID: {{ person.id }}</div>
@@ -46,7 +52,13 @@
         <!-- Selected Person Preview -->
         <div v-else class="selected-person-card">
             <div class="selected-header">
-                <img :src="selectedPerson.imageUrl" class="selected-avatar" />
+                <div 
+                  class="avatar-small selected-avatar-fix"
+                  :style="{ backgroundColor: '#92C9D6', color: '#1a1a1a' }"
+                >
+                  <span v-if="!selectedPerson.imageUrl || selectedPerson.imageUrl.includes('ui-avatars') || selectedPerson.imageUrl.includes('dicebear')" class="initials-small">{{ getInitials(selectedPerson) }}</span>
+                  <img v-else :src="selectedPerson.imageUrl" alt="Avatar" class="avatar-img-small" />
+                </div>
                 <div class="selected-info">
                     <div class="selected-name">{{ selectedPerson.firstName }} {{ selectedPerson.lastName }}</div>
                     <div class="selected-id">ID: {{ selectedPerson.id }}</div>
@@ -81,6 +93,7 @@
 import { ref } from 'vue';
 import { PersonService } from '../services/personService';
 import type { BaptizoPerson } from '../types/baptizo-types';
+import { getInitials } from '../utils/theme';
 
 const emit = defineEmits(['close', 'personAdded']);
 
@@ -333,11 +346,41 @@ const addPerson = async () => {
 .search-result-item:hover {
     background: #333;
 }
-.result-avatar {
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
+.result-info {
+  flex: 1;
 }
+
+/* AVATAR STYLES (Copied from Offboarding) */
+.avatar-small {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 0.75rem;
+  font-weight: bold;
+  overflow: hidden;
+  flex-shrink: 0;
+  color: #1a1a1a;
+}
+
+.initials-small {
+  text-transform: uppercase;
+}
+
+.avatar-img-small {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.selected-avatar-fix {
+  width: 48px;
+  height: 48px;
+  font-size: 1.1rem;
+}
+
 .result-name {
     font-weight: bold;
     color: #eee;

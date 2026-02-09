@@ -51,17 +51,19 @@
           </svg>
           Report erstellen
         </button>
-      <button @click="refreshData" class="ct-button ct-button--primary">
-          <!-- Scaled up Refresh Icon (SVG) -->
+        <button @click="refreshData" class="ct-button ct-button--primary">
           <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
             <polyline points="23 4 23 10 17 10"></polyline>
             <polyline points="1 20 1 14 7 14"></polyline>
             <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
           </svg>
           <span style="margin-left: 6px;">Refresh</span>
-      </button>
+        </button>
       </div>
     </header>
+
+    <!-- Demo Lock Modal -->
+    <DemoModal :isOpen="showDemoModal" @close="closeDemoModal" />
 
     <!-- Config Warning (Hidden per user request) -->
     <!-- <div v-if="!loading && (!interestGroupId || !baptizedGroupId)" class="config-warning">
@@ -90,15 +92,15 @@
       
       <!-- KPI Widgets (Dynamic) -->
       <section class="kpi-grid">
-        <div class="kpi-card">
+        <div class="kpi-card interessenten">
           <span class="kpi-label">INTERESSENTEN</span>
           <span class="kpi-value text-interessenten">{{ kpiInterested }}</span>
         </div>
-        <div class="kpi-card">
+        <div class="kpi-card seminare">
           <span class="kpi-label">SEMINARTEILNEHMER</span>
           <span class="kpi-value text-seminare">{{ kpiSeminars }}</span>
         </div>
-        <div class="kpi-card">
+        <div class="kpi-card taufen">
           <span class="kpi-label">GETAUFTE</span>
           <span class="kpi-value text-taufen">{{ kpiBaptisms }}</span>
         </div>
@@ -185,8 +187,8 @@
 
       <!-- 4 Lists Grid -->
       <section class="lists-grid">
-        <!-- List 1 -->
-        <div class="list-card">
+        <!-- List 1 (Seminar) -->
+        <div class="list-card seminar">
           <div class="list-header">
             <h4>Ausstehendes Seminar</h4>
             <span class="badge badge-count">{{ listSeminarPending.length }}</span>
@@ -197,8 +199,8 @@
           <PersonList v-else :persons="listSeminarPending" @click="openPersonModal" />
         </div>
 
-        <!-- List 2 -->
-        <div class="list-card">
+        <!-- List 2 (Taufe) -->
+        <div class="list-card taufe">
           <div class="list-header">
             <h4>Ausstehende Taufe</h4>
             <span class="badge badge-count">{{ listBaptismPending.length }}</span>
@@ -209,8 +211,8 @@
           <PersonList v-else :persons="listBaptismPending" @click="openPersonModal" />
         </div>
 
-        <!-- List 3 -->
-        <div class="list-card">
+        <!-- List 3 (Urkunde) -->
+        <div class="list-card urkunde">
           <div class="list-header">
             <h4>Ausstehende Urkunde</h4>
             <span class="badge badge-count">{{ listCertificatePending.length }}</span>
@@ -221,8 +223,8 @@
           <PersonList v-else :persons="listCertificatePending" @click="openPersonModal" />
         </div>
 
-        <!-- List 4 -->
-        <div class="list-card">
+        <!-- List 4 (Integration) -->
+        <div class="list-card integration">
           <div class="list-header">
             <h4>Ausstehende Integration</h4>
             <span class="badge badge-count">{{ listIntegrationPending.length }}</span>
@@ -242,7 +244,9 @@
         <div class="filter-bar">
           <button @click="peopleFilter = 'all'" :class="{ active: peopleFilter === 'all' }">Alle</button>
           <button @click="peopleFilter = 'interested'" :class="{ active: peopleFilter === 'interested' }">Interessenten</button>
+          <button @click="peopleFilter = 'seminar'" :class="{ active: peopleFilter === 'seminar' }">Seminarteilnehmer</button>
           <button @click="peopleFilter = 'baptized'" :class="{ active: peopleFilter === 'baptized' }">Getaufte</button>
+          <button @click="peopleFilter = 'inactive'" :class="{ active: peopleFilter === 'inactive' }">Inaktiv</button>
           <button @click="peopleFilter = 'problems'" :class="{ active: peopleFilter === 'problems' }">Fokus</button>
         </div>
         <div class="management-buttons">
@@ -281,7 +285,13 @@
           </tr>
         </thead>
         <tbody>
-          <tr v-for="person in filteredPersons" :key="person.id" :class="{ inactive: person.status === 'inactive' }">
+          <tr 
+            v-for="person in filteredPersons" 
+            :key="person.id" 
+            class="clickable-row"
+            :class="{ inactive: person.status === 'inactive' }"
+            @click="openPersonModal(person)"
+          >
             <td>
               <div class="person-cell">
                 <div 
@@ -294,7 +304,11 @@
                 {{ person.firstName }} {{ person.lastName }}
               </div>
             </td>
-            <td>{{ person.status === 'active' ? 'Aktiv' : 'Inaktiv' }}</td>
+            <td>
+              <span v-if="person.status === 'active'">Aktiv</span>
+              <span v-else-if="person.status === 'inactive'">Inaktiv</span>
+              <span v-else>-</span>
+            </td>
             <td>{{ formatDate(person.entry_date) }}</td>
             <td>
               <span v-if="person.fields.seminar_besucht_am" class="badge success">Ja</span>
@@ -313,7 +327,7 @@
               <span v-else class="badge pending">Nein</span>
             </td>
             <td style="text-align: right;">
-              <button class="edit-btn" @click="openPersonModal(person)">Bearbeiten</button>
+              <button class="edit-btn" @click.stop="openPersonModal(person)">Bearbeiten</button>
             </td>
           </tr>
         </tbody>
@@ -363,7 +377,7 @@
           <p class="intro-text">
             Organisiert den gesamten Taufprozess deiner Gemeinde – vom ersten Interesse bis zur Integration. 
             Unser Plugin führt deine Leiter smart durch alle Schritte: Anmeldung, Taufseminar, Taufe, Follow-up – strukturiert, automatisiert und nachvollziehbar.
-            <strong> Weil jeder Mensch zählt.</strong>
+            <span class="mint-highlight">Weil jeder Mensch zählt.</span>
           </p>
         </div>
 
@@ -442,7 +456,7 @@
       <!-- FAQ Section -->
       <section class="faq-section">
         <div class="faq-title-card">
-          <div class="help-title-badge">Häufige Fragen & Antworten (FAQs)</div>
+          <div class="help-title-badge faq-badge">Häufige Fragen & Antworten (FAQs)</div>
           <p class="faq-subtitle">
             Schnelle Hilfe zu den wichtigsten Themen – von Onboarding bis Mailversand.<br>
             Nicht gefunden, was du suchst? <a @click="currentTab = 'about'" class="faq-contact-link">Kontaktiere uns gerne</a>.
@@ -611,6 +625,7 @@ import EventList from './EventList.vue';
 import PersonDetailModal from './PersonDetailModal.vue';
 import SettingsTab from './SettingsTab.vue';
 import Admin from './Admin.vue';
+import DemoModal from './DemoModal.vue';
 import OnboardingModal from './OnboardingModal.vue';
 import OffboardingModal from './OffboardingModal.vue';
 import { DEFAULT_SETTINGS } from '../types/baptizo-settings';
@@ -641,6 +656,8 @@ const selectedPerson = ref<BaptizoPerson | null>(null);
 const adminSettings = ref<AdminSettings | null>(null);
 const showOnboardingModal = ref(false);
 const showOffboardingModal = ref(false);
+const showPersonModal = ref(false);
+const showDemoModal = ref(false);
 const eventListRef = ref<any>(null); // Reference to EventList component
 
 
@@ -674,13 +691,14 @@ const multiSiteEnabled = ref(false);
 const handleMultiSiteToggle = () => {
   // First: Toggle ON (visual feedback)
   multiSiteEnabled.value = true;
-  
-  // Then: Show alert after short delay
-  setTimeout(() => {
-    alert('🚧 Feature in Entwicklung');
-    // After alert dismissed: Toggle back OFF
+  // Then: Show Modal
+  showDemoModal.value = true;
+};
+
+const closeDemoModal = () => {
+    // Revert visual state
     multiSiteEnabled.value = false;
-  }, 200);
+    showDemoModal.value = false;
 };
 
 // FAQ Data for Help Tab
@@ -730,7 +748,6 @@ const toggleFaq = (index: number) => {
 const isSyncing = ref(false);
 const showToast = ref(false);
 const toastMessage = ref('');
-const showPersonModal = ref(false);
 
 // Note: loadData and refreshData are defined below with Service Integration
 
@@ -805,7 +822,9 @@ const updateSettings = async (newSettings: BaptizoSettings) => {
 // NOTE: I am using replace_file_content on the file, so I will replace the existing loadData function.
 // updateSettings already defined above
 
-const openReportModal = () => alert("🚧 Feature in Entwicklung");
+const openReportModal = () => {
+    showDemoModal.value = true;
+};
 const handleCreateEvent = async (e: any) => { await provider.createEvent(e); await loadData(); };
 
 // Modal Handlers
@@ -822,32 +841,8 @@ const handlePersonAdded = async () => {
   setTimeout(() => showToast.value = false, 3000);
 };
 
-// Branding Colors (Same as PersonList.vue)
-const BRAND_PALETTE = [
-  '#92C9D6', // Turquoise (Interessenten)
-  '#7383B2', // Purple (Seminare)
-  '#FF9F43'  // Orange (Taufen)
-];
-
-const getAvatarTextColor = (bgColor: string) => {
-  if (bgColor === '#92C9D6') return '#3C3C5B'; // Turquoise -> Dark Purple
-  if (bgColor === '#FF9F43') return '#521D15'; // Orange -> Dark Red/Brown
-  return '#FFFFFF'; // Purple/Default -> White
-};
-
-const getAvatarColor = (person: BaptizoPerson) => {
-  const str = (person.firstName || '') + (person.lastName || '') + (person.id || 0);
-  let hash = 0;
-  for (let i = 0; i < str.length; i++) {
-    hash = str.charCodeAt(i) + ((hash << 5) - hash);
-  }
-  const index = Math.abs(hash) % BRAND_PALETTE.length;
-  return BRAND_PALETTE[index];
-};
-
-const getInitials = (person: BaptizoPerson) => {
-  return (person.firstName?.charAt(0) || '') + (person.lastName?.charAt(0) || '');
-};
+// Branding Colors (Imported)
+import { getAvatarColor, getAvatarTextColor, getInitials } from '../utils/theme';
 
 const handlePersonUpdated = async (updatedPerson: BaptizoPerson) => {
   try {
@@ -1220,28 +1215,28 @@ const uniquePersons = computed(() => {
 // 1. Seminar Pending: In Interest Group flow (status active), No Seminar date
 const listSeminarPending = computed(() => {
   return uniquePersons.value
-    .filter(m => m.status === 'active' && !m.fields.seminar_besucht_am && !m.fields.getauft_am && filterByTime(m, 'entry'))
+    .filter(m => !m.fields.seminar_besucht_am && !m.fields.getauft_am && filterByTime(m, 'entry'))
     .map(p => ({ ...p, subtitle: `Interesse: ${formatDate(p.entry_date)}` }));
 });
 
 // 2. Baptism Pending: Has Seminar, No Baptism
 const listBaptismPending = computed(() => {
   return uniquePersons.value
-    .filter(m => m.status === 'active' && m.fields.seminar_besucht_am && !m.fields.getauft_am && filterByTime(m, 'entry'))
+    .filter(m => m.fields.seminar_besucht_am && !m.fields.getauft_am && filterByTime(m, 'entry'))
     .map(p => ({ ...p, subtitle: `Seminar: ${formatDate(p.fields.seminar_besucht_am)}` }));
 });
 
 // 3. Certificate Pending: Has Baptism, No Certificate
 const listCertificatePending = computed(() => {
   return uniquePersons.value
-    .filter(m => m.status === 'active' && m.fields.getauft_am && !m.fields.urkunde_ueberreicht && filterByTime(m, 'baptism'))
+    .filter(m => m.fields.getauft_am && !m.fields.urkunde_ueberreicht && filterByTime(m, 'baptism'))
     .map(p => ({ ...p, subtitle: `Taufe: ${formatDate(p.fields.getauft_am)}` }));
 });
 
 // 4. Integration Pending: Has Certificate, No Integration
 const listIntegrationPending = computed(() => {
   return uniquePersons.value
-    .filter(m => m.status === 'active' && m.fields.getauft_am && m.fields.urkunde_ueberreicht && !m.fields.in_gemeinde_integriert && filterByTime(m, 'baptism'))
+    .filter(m => m.fields.getauft_am && m.fields.urkunde_ueberreicht && !m.fields.in_gemeinde_integriert && filterByTime(m, 'baptism'))
     .map(p => ({ ...p, subtitle: `Taufe: ${formatDate(p.fields.getauft_am)}` }));
 });
 
@@ -1251,11 +1246,20 @@ const allPersons = uniquePersons; // alias for compatibility
 // People Tab Filter (SORTED BY ONBOARDING DATE - FIFO)
 const filteredPersons = computed(() => {
   let list = uniquePersons.value;
-  if (peopleFilter.value === 'interested') list = list.filter(p => !p.fields.getauft_am);
-  else if (peopleFilter.value === 'baptized') list = list.filter(p => p.fields.getauft_am);
+  if (peopleFilter.value === 'interested') {
+    list = list.filter(p => !p.fields.seminar_besucht_am && !p.fields.getauft_am && !p.fields.urkunde_ueberreicht && !p.fields.in_gemeinde_integriert);
+  }
+  else if (peopleFilter.value === 'seminar') {
+    list = list.filter(p => p.fields.seminar_besucht_am && !p.fields.getauft_am && !p.fields.urkunde_ueberreicht && !p.fields.in_gemeinde_integriert);
+  }
+  else if (peopleFilter.value === 'baptized') {
+    list = list.filter(p => p.fields.getauft_am);
+  }
+  else if (peopleFilter.value === 'inactive') {
+    list = list.filter(p => p.status === 'inactive');
+  }
   else if (peopleFilter.value === 'problems') {
     list = list.filter(p => {
-      if (p.status !== 'active') return false;
       if (p.fields.getauft_am && (!p.fields.urkunde_ueberreicht || !p.fields.in_gemeinde_integriert)) return true;
       if (!p.fields.seminar_besucht_am && p.entry_date && getDaysSince(p.entry_date) > 180) return true;
       return false;
@@ -1490,7 +1494,7 @@ onMounted(() => loadData());
   display: flex;
   flex-direction: column;
   align-items: center;
-  border-bottom: 4px solid #444;
+  /* border-bottom set by specific classes below */
 }
 
 .kpi-label {
@@ -1509,6 +1513,10 @@ onMounted(() => loadData());
 .text-interessenten { color: #92C9D6; }
 .text-seminare { color: #7383B2; }
 .text-taufen { color: #FF9F43; }
+
+.kpi-card.interessenten { border-bottom: 4px solid #92C9D6; }
+.kpi-card.seminare { border-bottom: 4px solid #7383B2; }
+.kpi-card.taufen { border-bottom: 4px solid #FF9F43; }
 
 /* Chart Section */
 .master-chart-section {
@@ -1653,6 +1661,11 @@ onMounted(() => loadData());
   border-top: 4px solid #555;
 }
 
+.list-card.seminar { border-color: #92C9D6; } /* Turquoise */
+.list-card.taufe { border-color: #7383B2; }   /* Purple */
+.list-card.urkunde { border-color: #FF9F43; } /* Orange - UPDATED */
+.list-card.integration { border-color: #76E0C2; } /* Mint */
+
 .list-header {
   display: flex;
   justify-content: space-between;
@@ -1684,8 +1697,8 @@ onMounted(() => loadData());
 }
 
 .badge.success {
-  background: #10b981;
-  color: white;
+  background: #76E0C2; /* Punchy Mint - Stronger green tone */
+  color: #3C3C5B; /* Dark Text */
 }
 
 .badge.pending {
@@ -1814,8 +1827,25 @@ onMounted(() => loadData());
 
 
 
+/* .inactive styling (opacity) removed per user request */
 .people-table tr.inactive {
-  opacity: 0.5;
+  /* No opacity */
+}
+
+.clickable-row {
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.clickable-row:hover {
+  background-color: rgba(146, 201, 214, 0.05) !important; /* Subtle Turquoise tint */
+}
+
+/* Sync Edit Button hover with Row hover */
+.clickable-row:hover .edit-btn {
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  border-color: rgba(255, 255, 255, 0.4);
 }
 
 .person-cell {
@@ -1887,8 +1917,8 @@ onMounted(() => loadData());
 /* Title Badge (Button-Style) */
 .title-badge {
   display: inline-block;
-  background: rgba(146, 201, 214, 0.15); /* Subtle turquoise background */
-  color: #92C9D6;
+  background: rgba(118, 224, 194, 0.15); /* Punchy Mint Tint */
+  color: #76E0C2;
   font-weight: 800;
   text-transform: uppercase;
   padding: 0.5rem 1.5rem;
@@ -1938,7 +1968,7 @@ onMounted(() => loadData());
 }
 
 .benefit-card h3 {
-  color: #92C9D6;
+  color: #76E0C2; /* Punchy Mint */
   font-size: 1.1rem;
   margin-bottom: 0.75rem;
   font-weight: bold;
@@ -2028,7 +2058,9 @@ onMounted(() => loadData());
   font-size: 1rem;
 }
 
-.faq-question:hover {
+.faq-question:hover,
+.faq-item.active .faq-question:hover,
+.faq-item.active .faq-question {
   background: rgba(255, 159, 67, 0.1); /* Orange Tint */
   color: #FF9F43; /* Orange Text */
 }
@@ -2340,8 +2372,9 @@ onMounted(() => loadData());
 /* Force Help Title Style */
 .help-title-badge {
   display: inline-block;
-  background: rgba(146, 201, 214, 0.1);
-  color: #92C9D6;
+  background: rgba(118, 224, 194, 0.15) !important; /* Punchy Mint Tint */
+  color: #76E0C2 !important;
+  border: none !important; /* No border for intro badge */
   padding: 0.5rem 1rem;
   border-radius: 20px;
   font-size: 1.5rem !important; /* Force increase */
@@ -2350,6 +2383,17 @@ onMounted(() => loadData());
   margin-bottom: 1.5rem;
   letter-spacing: 0.05em;
   line-height: 1.4;
+}
+
+/* FAQ Badge override - ORANGE */
+.faq-badge {
+  background: rgba(255, 159, 67, 0.15) !important;
+  color: #FF9F43 !important;
+  border: none !important;
+}
+
+.mint-highlight {
+  color: #76E0C2;
 }
 
 /* Offboarding Button Accent - SOLID PURPLE */
@@ -2382,5 +2426,10 @@ onMounted(() => loadData());
 
 .ct-button--onboarding .icon {
   color: #3C3C5B !important;
+}
+/* Mint Text Helper */
+.mint-text {
+  color: #76E0C2; /* Punchy Mint */
+  font-weight: bold;
 }
 </style>

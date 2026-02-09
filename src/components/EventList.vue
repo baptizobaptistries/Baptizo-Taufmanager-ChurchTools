@@ -43,9 +43,9 @@
         Keine Termine gefunden.
       </div>
       <div v-else v-for="event in filteredEvents" :key="event.id" class="event-card" :class="{ ghost: isPast(event) }">
-        <div class="event-date">
-          <span class="day">{{ getDay(event.date) }}</span>
-          <span class="month">{{ getGermanMonth(event.date) }}</span>
+        <div class="event-date" :class="event.type === 'seminar' ? 'bg-seminar' : 'bg-baptism'">
+          <span class="day" :class="event.type === 'seminar' ? 'day-seminar' : 'day-baptism'">{{ getDay(event.date) }}</span>
+          <span class="month" :class="event.type === 'seminar' ? 'month-seminar' : 'month-baptism'">{{ getGermanMonth(event.date) }}</span>
         </div>
         
         <div class="event-details">
@@ -399,11 +399,27 @@ onMounted(() => {
   min-width: 70px;
 }
 
+.event-date.bg-seminar {
+  background: rgba(115, 131, 178, 0.15); /* Purple tint */
+}
+
+.event-date.bg-baptism {
+  background: rgba(255, 159, 67, 0.15); /* Orange tint */
+}
+
 .event-date .day {
   display: block;
   font-size: 1.5rem;
   font-weight: bold;
   color: #fff;
+}
+
+.event-date .day-seminar {
+  color: #7383B2; /* Purple */
+}
+
+.event-date .day-baptism {
+  color: #FF9F43; /* Orange */
 }
 
 .event-date .month {
@@ -412,6 +428,14 @@ onMounted(() => {
   font-weight: bold;
   color: #888;
   line-height: 1.2;
+}
+
+.event-date .month-seminar {
+  color: #7383B2; /* Purple */
+}
+
+.event-date .month-baptism {
+  color: #FF9F43; /* Orange */
 }
 
 .event-details {
@@ -429,6 +453,7 @@ onMounted(() => {
   margin: 0;
   color: #fff;
   font-size: 1.1rem;
+  font-weight: bold;
 }
 
 .meta {
@@ -460,18 +485,19 @@ onMounted(() => {
 /* Actions */
 .edit-btn {
   background: none;
-  border: 1px solid #444;
+  border: 1px solid rgba(255, 255, 255, 0.2);
   color: #ffffff;
-  padding: 0.5rem 1rem;
+  padding: 0.4rem 0.8rem;
   border-radius: 4px;
   cursor: pointer;
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   transition: all 0.2s;
 }
 
 .edit-btn:hover {
-  background: #444;
+  background: rgba(255, 255, 255, 0.1);
   color: white;
+  border-color: rgba(255, 255, 255, 0.4);
 }
 
 .empty-state {

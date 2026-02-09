@@ -17,10 +17,10 @@
             :class="{ selected: selectedPersonIds.includes(person.id) }"
             @click="toggleSelection(person.id)"
           >
-            <!-- Avatar Logic -->
+            <!-- Avatar Logic (Restored individual colors) -->
             <div 
               class="avatar-small"
-              :style="{ backgroundColor: getAvatarColor(person), color: getAvatarTextColor(getAvatarColor(person)) }"
+              :style="{ backgroundColor: getAvatarColor(person as any), color: getAvatarTextColor(getAvatarColor(person as any)) }"
             >
               <span v-if="!person.imageUrl || person.imageUrl.includes('ui-avatars') || person.imageUrl.includes('dicebear')" class="initials-small">{{ getInitials(person) }}</span>
               <img v-else :src="person.imageUrl" alt="Avatar" class="avatar-img-small" />
@@ -117,32 +117,8 @@ const sortedPersons = computed(() => {
   });
 });
 
-// AVATAR LOGIC
-const BRAND_PALETTE = [
-  '#92C9D6', // Turquoise
-  '#7383B2', // Purple
-  '#FF9F43'  // Orange
-];
-
-const getAvatarTextColor = (bgColor: string) => {
-  if (bgColor === '#92C9D6') return '#3C3C5B';
-  if (bgColor === '#FF9F43') return '#521D15';
-  return '#FFFFFF';
-};
-
-const getAvatarColor = (person: BaptizoPerson) => {
-  const str = (person.firstName || '') + (person.lastName || '') + (person.id || 0);
-  let hash = 0;
-  for (let i = 0; i < str.length; i++) {
-    hash = str.charCodeAt(i) + ((hash << 5) - hash);
-  }
-  const index = Math.abs(hash) % BRAND_PALETTE.length;
-  return BRAND_PALETTE[index];
-};
-
-const getInitials = (person: BaptizoPerson) => {
-  return (person.firstName?.charAt(0) || '') + (person.lastName?.charAt(0) || '');
-};
+// AVATAR LOGIC (Imported)
+import { getInitials, getAvatarColor, getAvatarTextColor } from '../utils/theme';
 
 const removePersons = async () => {
   if (selectedPersonIds.value.length === 0) return;
@@ -327,8 +303,8 @@ const removePersons = async () => {
 }
 
 .badge-mini.success {
-  background: #10b981;
-  color: white;
+  background: #76E0C2; /* Punchy Mint */
+  color: #3C3C5B; /* Dark Text */
 }
 
 .badge-mini.pending {

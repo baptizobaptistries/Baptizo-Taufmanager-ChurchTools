@@ -17,7 +17,7 @@
           </div>
           <div class="info-text">
             <div class="form-group status-group">
-              <label>Status</label>
+              <label>Status (Mailversand)</label>
               <select v-model="status" class="status-select" :class="status">
                 <option value="active">Aktiv</option>
                 <option value="inactive">Inaktiv</option>
@@ -127,33 +127,7 @@ const isIntegrated = ref(!!props.person.fields.in_gemeinde_integriert);
 const integrationDate = ref(props.person.fields.in_gemeinde_integriert || '');
 
 // Helpers
-const BRAND_PALETTE = [
-  '#92C9D6', // Turquoise
-  '#7383B2', // Purple
-  '#FF9F43'  // Orange
-];
-
-const getAvatarColor = (p: BaptizoPerson) => {
-  const str = (p.firstName || '') + (p.lastName || '') + (p.id || 0);
-  let hash = 0;
-  for (let i = 0; i < str.length; i++) {
-    hash = str.charCodeAt(i) + ((hash << 5) - hash);
-  }
-  const index = Math.abs(hash) % BRAND_PALETTE.length;
-  return BRAND_PALETTE[index];
-};
-
-const getAvatarTextColor = (bgColor: string) => {
-  if (bgColor === '#92C9D6') return '#3C3C5B';
-  if (bgColor === '#FF9F43') return '#521D15';
-  return '#FFFFFF';
-};
-
-const getInitials = (p: BaptizoPerson) => {
-  const f = p.firstName?.charAt(0) || '';
-  const l = p.lastName?.charAt(0) || '';
-  return (f + l).toUpperCase();
-};
+import { getAvatarColor, getAvatarTextColor, getInitials } from '../utils/theme';
 const formatDate = (dateStr: string | null | undefined) => {
   if (!dateStr) return 'Unbekannt';
   const d = new Date(dateStr);
@@ -343,10 +317,10 @@ const toggleContactInfo = async () => {
 }
 
 .grid-row {
-  display: grid;
-  grid-template-columns: 1fr 140px;
-  gap: 1rem;
+  display: flex;
+  justify-content: space-between;
   align-items: center;
+  gap: 1rem;
   min-height: 32px;
 }
 
@@ -372,7 +346,7 @@ const toggleContactInfo = async () => {
   color: white;
   padding: 0.3rem;
   border-radius: 4px;
-  width: 100%;
+  width: 140px; /* Fixed width for Flexbox alignment */
 }
 
 .modal-footer {

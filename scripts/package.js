@@ -58,11 +58,11 @@ if (!fs.existsSync(path.join(distDir, 'manifest.json')) || !fs.existsSync(path.j
 }
 
 try {
-    console.log('   Creating archive with root dist/ folder...');
+    console.log('   Creating archive with root dist/ folder (Gold Standard)...');
 
     if (process.platform === 'win32') {
         // Use Windows tar.exe (available in Win10+) for standard ZIP creation
-        // We go to root and zip the 'dist' folder
+        // We go to root and zip the 'dist' folder (Gold Standard: Nested structure)
         const tarCommand = `tar.exe -ac -f "${archivePath}" dist`;
         execSync(tarCommand, { cwd: rootDir, stdio: 'inherit' });
     } else {

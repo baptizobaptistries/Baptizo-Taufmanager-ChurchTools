@@ -49,10 +49,10 @@
       <div v-if="currentTab === 'emails'" class="tab-pane">
         <div class="email-templates-grid">
           <!-- LEFT COLUMN: Taufseminar Mails -->
-          <div class="template-column">
+          <div class="template-column column-seminar">
             <div class="column-header">
               <span class="category-badge seminar">SEMINAR</span>
-              <button @click="addTemplate('seminar')" class="add-btn">+ Hinzufügen</button>
+              <button @click="addTemplate('seminar')" class="add-btn">Hinzufügen</button>
             </div>
             <div class="template-list">
               <div v-if="seminarTemplates.length === 0" class="empty-state">
@@ -96,17 +96,17 @@
                     <label>Inhalt</label>
                     <textarea v-model="template.body" rows="8" class="body-textarea"></textarea>
                   </div>
-                  <button @click="deleteTemplate(template.id)" class="delete-btn">Löschen</button>
+                  <button @click="deleteTemplate(template.id)" class="delete-btn delete-btn--seminar">Löschen</button>
                 </div>
               </div>
             </div>
           </div>
 
           <!-- RIGHT COLUMN: Taufe Mails -->
-          <div class="template-column">
+          <div class="template-column column-baptism">
             <div class="column-header">
               <span class="category-badge baptism">TAUFE</span>
-              <button @click="addTemplate('baptism')" class="add-btn">+ Hinzufügen</button>
+              <button @click="addTemplate('baptism')" class="add-btn">Hinzufügen</button>
             </div>
             <div class="template-list">
               <div v-if="baptismTemplates.length === 0" class="empty-state">
@@ -150,7 +150,7 @@
                     <label>Inhalt</label>
                     <textarea v-model="template.body" rows="8" class="body-textarea"></textarea>
                   </div>
-                  <button @click="deleteTemplate(template.id)" class="delete-btn">Löschen</button>
+                  <button @click="deleteTemplate(template.id)" class="delete-btn delete-btn--baptism">Löschen</button>
                 </div>
               </div>
             </div>
@@ -164,7 +164,7 @@
             <!-- Section 1: Links -->
             <div class="section-container">
               <div class="section-header">
-                 <p class="section-desc">Konfiguriere permanente Links für deine E-Mails</p>
+                 <p class="section-desc">PERMANENTE LINKS FÜR DEINE E-MAILS</p>
               </div>
               <div class="links-grid">
                 <div v-for="p in linkPlaceholders" :key="p.id" class="link-card">
@@ -184,7 +184,7 @@
             <!-- Section 2: Custom -->
             <div class="section-container">
               <div class="section-header">
-                 <p class="section-desc">Konfiguriere variable Termine oder festen Text für deine E-Mails</p>
+                 <p class="section-desc">VARIABLE TERMINE UND FESTER TEXTBLOCK FÜR DEINE E-MAILS</p>
               </div>
               <div class="links-grid">
                  <div v-for="p in textPlaceholders" :key="p.id" class="link-card">
@@ -242,6 +242,9 @@
         </div>
     </div>
     
+    <!-- Demo Lock Modal -->
+    <DemoModal :isOpen="showDemoModal" @close="closeDemoModal" />
+    
   </div>
 </template>
 
@@ -249,6 +252,7 @@
 import { ref, watch, computed, onMounted } from 'vue';
 import { type BaptizoSettings, DEFAULT_SETTINGS, type EmailTemplate } from '../types/baptizo-settings';
 import { EventService } from '../services/eventService';
+import DemoModal from './DemoModal.vue';
 
 const props = defineProps<{
   settings: BaptizoSettings;
@@ -262,6 +266,7 @@ const eventService = new EventService();
 
 const nextBaptismDate = ref<string>('Berechne...');
 const nextSeminarDate = ref<string>('Berechne...');
+const showDemoModal = ref(false);
 
 // --- Initialization & Migration ---
 const initializeSettings = (source: BaptizoSettings | undefined): BaptizoSettings => {
@@ -368,9 +373,20 @@ const discardAndSwitch = () => {
 };
 
 // Auto-Save Toggle (Silent)
-const toggleEmailSending = async () => {
-    localSettings.value.emailSendingEnabled = !localSettings.value.emailSendingEnabled;
-    await saveSettings(true); // Silent save
+const toggleEmailSending = () => {
+    // Feature disabled in Demo
+    localSettings.value.emailSendingEnabled = true;
+    
+    // Solid delay to ensure the toggle slider clearly moves to Turquoise before the modal appears
+    setTimeout(() => {
+        showDemoModal.value = true;
+    }, 250); 
+};
+
+const closeDemoModal = () => {
+    // Revert visual state
+    localSettings.value.emailSendingEnabled = false;
+    showDemoModal.value = false;
 };
 
 
@@ -536,25 +552,25 @@ const openPlaceholders = () => {
   align-items: center;
   gap: 0.75rem;
   padding: 0.5rem 1rem;
-  background: rgba(0, 0, 0, 0.3);
-  border: 2px solid #555;
+  background: #3C3C5B; /* Deep Purple like Offboarding */
+  color: white;       /* White text like Offboarding */
+  border: none;
   border-radius: 4px;
   transition: all 0.2s;
   cursor: pointer;
   user-select: none;
   position: relative; 
-  /* Force same box size properties as buttons */
   height: 40px; 
   box-sizing: border-box;
 }
 
 .toggle-container:hover {
-    border-color: #888;
+    background: #4b4b6e;
 }
 
 .toggle-label {
-  font-size: 0.85rem;
-  color: #fff;
+  font-size: 0.9rem; /* Increased to match primary buttons */
+  color: white; 
   font-weight: 700;
   cursor: pointer;
 }
@@ -563,7 +579,7 @@ const openPlaceholders = () => {
   position: relative;
   width: 34px;
   height: 18px;
-  background: #555;
+  background: #555; /* Reverted to previous light gray */
   border-radius: 9px;
   transition: background 0.3s;
   flex-shrink: 0;
@@ -571,7 +587,7 @@ const openPlaceholders = () => {
 }
 
 .toggle-switch.active {
-  background: #92C9D6;
+  background: #92C9D6; /* Turquoise instead of Mint */
 }
 
 .toggle-knob {
@@ -625,6 +641,21 @@ const openPlaceholders = () => {
   visibility: visible;
 }
 
+
+.email-templates-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+  margin-bottom: 2rem;
+}
+
+.template-column {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  border-bottom: none; /* Removed for clean look */
+  padding: 1.5rem 0;
+}
 
 .ct-button {
   padding: 0.5rem 1rem;
@@ -745,24 +776,26 @@ const openPlaceholders = () => {
 
 .add-btn {
   background: none;
-  border: 1px solid #444;
-  color: #92C9D6;
-  padding: 0.5rem 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+  padding: 0.4rem 0.8rem;
   border-radius: 4px;
   cursor: pointer;
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   transition: all 0.2s;
 }
 
 .add-btn:hover {
-  border-color: #92C9D6;
-  background: rgba(146, 201, 214, 0.1);
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  border-color: rgba(255, 255, 255, 0.4);
 }
 
 .template-list {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
+  padding-bottom: 5rem; /* Even more breathing room at the bottom */
 }
 
 .empty-state {
@@ -777,6 +810,11 @@ const openPlaceholders = () => {
   border: none; /* Removed as requested */
   border-radius: 4px;
   overflow: hidden;
+  transition: transform 0.2s ease;
+}
+
+.template-card:hover {
+  transform: translateX(5px);
 }
 
 .template-header {
@@ -799,10 +837,6 @@ const openPlaceholders = () => {
 .template-header.header-baptism {
   background: rgba(255, 159, 67, 0.15); /* Soft Orange */
   /* border-bottom removed */
-}
-
-.template-header:hover {
-  filter: brightness(1.2);
 }
 
 .offset-badge {
@@ -855,18 +889,18 @@ const openPlaceholders = () => {
   width: 100%;
   padding: 0.6rem; /* Slightly smaller input padding */
   background: #1a1a1a;
-  border: 1px solid #444;
+  border: none; /* Removed for clean look */
   color: #fff;
   border-radius: 4px;
   font-family: inherit;
   font-size: 0.95rem;
-  transition: border-color 0.2s;
+  transition: all 0.2s;
 }
 
 .standard-input:focus,
 .body-textarea:focus {
   outline: none;
-  border-color: #92C9D6; 
+  border: 1px solid #92C9D6; /* Border only on focus */
 }
 
 .dynamic-value {
@@ -887,7 +921,7 @@ const openPlaceholders = () => {
   width: 100%;
   padding: 0.6rem; /* Slightly smaller textarea padding */
   background: #1a1a1a;
-  border: 1px solid #444;
+  border: none; /* Removed for clean look */
   color: #fff;
   border-radius: 4px;
 }
@@ -915,7 +949,6 @@ const openPlaceholders = () => {
 
 .delete-btn {
   width: auto;
-  background: #3C3C5B !important; /* Dark Purple FORCE */
   color: white;
   border: none;
   padding: 0.4rem 1.2rem; /* Compact button padding */
@@ -926,8 +959,21 @@ const openPlaceholders = () => {
   transition: all 0.2s;
 }
 
-.delete-btn:hover {
+.delete-btn--seminar {
+  background: #3C3C5B !important; /* Deep Purple */
+}
+
+.delete-btn--seminar:hover {
   background: #4b4b6e !important;
+}
+
+.delete-btn--baptism {
+  background: #FF9F43 !important; /* Orange */
+  color: #251D15; /* Dark text for contrast */
+}
+
+.delete-btn--baptism:hover {
+  background: #ffae5e !important;
 }
 
 .section-container {
@@ -945,9 +991,9 @@ const openPlaceholders = () => {
 
 .section-desc {
   margin: 0;
-  color: #92C9D6; 
+  color: #FF9F43; /* Orange */
   font-size: 1.0rem; 
-  font-weight: normal; 
+  font-weight: bold; /* Bold */
 }
 
 .links-grid {
@@ -957,14 +1003,16 @@ const openPlaceholders = () => {
 }
 
 .link-card {
-  background: #2a2a2a;
+  background: rgba(255, 159, 67, 0.2); /* Stronger Soft Orange background */
   padding: 1.0rem; /* Reduced from 1.5rem */
   border-radius: 8px;
-  border: 1px solid #444;
+  border: 1px solid transparent; /* Prepare for hover border */
+  transition: all 0.2s ease;
 }
 
 .link-card:hover {
-  border-color: #555;
+  border-color: #FF9F43; /* Orange border on hover */
+  background: rgba(255, 159, 67, 0.25);
 }
 
 .save-toast {

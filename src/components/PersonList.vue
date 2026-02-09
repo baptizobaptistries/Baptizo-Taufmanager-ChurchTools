@@ -29,6 +29,7 @@
 
 <script setup lang="ts">
 import type { BaptizoPerson } from '../types/baptizo-types';
+import { getAvatarColor, getAvatarTextColor, getInitials } from '../utils/theme';
 
 const props = withDefaults(defineProps<{
   persons: (BaptizoPerson & { subtitle?: string })[],
@@ -41,35 +42,7 @@ const props = withDefaults(defineProps<{
 
 const emit = defineEmits(['click']);
 
-// BRAND PALETTE: Exact Chart Colors (Turquoise, Purple, Orange)
-const BRAND_PALETTE = [
-  '#92C9D6', // Turquoise (Interessenten)
-  '#7383B2', // Purple (Seminare)
-  '#FF9F43'  // Orange (Taufen)
-];
-
-const getAvatarColor = (person: BaptizoPerson) => {
-  // Use name hash for better distribution than numeric ID
-  const str = (person.firstName || '') + (person.lastName || '') + (person.id || 0);
-  let hash = 0;
-  for (let i = 0; i < str.length; i++) {
-    hash = str.charCodeAt(i) + ((hash << 5) - hash);
-  }
-  const index = Math.abs(hash) % BRAND_PALETTE.length;
-  return BRAND_PALETTE[index];
-};
-
-const getInitials = (person: BaptizoPerson) => {
-  const f = person.firstName?.charAt(0) || '';
-  const l = person.lastName?.charAt(0) || '';
-  return (f + l).toUpperCase();
-};
-
-const getAvatarTextColor = (bgColor: string) => {
-  if (bgColor === '#92C9D6') return '#3C3C5B'; // Turquoise -> Dark Purple
-  if (bgColor === '#FF9F43') return '#521D15'; // Orange -> Dark Red/Brown
-  return '#FFFFFF'; // Purple/Default -> White
-};
+// Color logic moved to src/utils/theme.ts
 
 const getStatusText = (p: BaptizoPerson & { subtitle?: string }) => {
   if (p.subtitle) return p.subtitle;
