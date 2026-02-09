@@ -215,6 +215,25 @@ export class PersonService implements DataProvider {
         try {
             await churchtoolsClient.patch(`/persons/${personId}`, ctFields);
             console.log(`[Baptizo] ✓ Successfully updated person ${personId}`);
+
+            // INSTANT GROUP SYNC: If baptism date was updated, trigger group reconciliation
+            if (fields.getauft_am !== undefined) {
+                const settings = await getAdminSettings();
+                if (settings?.interestGroupId && settings?.baptizedGroupId) {
+                    const interestId = parseInt(settings.interestGroupId);
+                    const baptizedId = parseInt(settings.baptizedGroupId);
+
+                    if (fields.getauft_am) {
+                        // Move to Baptized
+                        await this.addPersonToGroup(personId, baptizedId);
+                        await this.removePersonFromGroup(personId, interestId);
+                    } else {
+                        // Move back to Interest
+                        await this.addPersonToGroup(personId, interestId);
+                        await this.removePersonFromGroup(personId, baptizedId);
+                    }
+                }
+            }
         } catch (error) {
             console.error('[Baptizo] Error updating person:', error);
             throw error;
