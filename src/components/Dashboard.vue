@@ -60,14 +60,6 @@
           </svg>
           <span style="margin-left: 6px;">Refresh</span>
       </button>
-        <button 
-          v-if="user?.is_admin || user?.meta?.is_admin" 
-          @click="currentTab = 'settings'" 
-          class="ct-button ct-button--admin"
-          style="background-color: #333; color: white; margin-left: 8px;"
-        >
-          <span class="icon">⚙️</span> System-Einstellungen
-        </button>
       </div>
     </header>
 
@@ -1970,6 +1962,8 @@ onMounted(() => loadData());
   font-size: 0.9rem;
   margin: 0.5rem 0 0 0;
   line-height: 1.4;
+  text-align: center !important;
+  display: block;
 }
 
 .faq-contact-link {
@@ -2084,6 +2078,8 @@ onMounted(() => loadData());
 /* Footer */
 .baptizo-footer {
   margin-top: 2rem; /* Reduced from 4rem to minimize gap on shorter pages */
+  width: 100%;
+  display: block;
   text-align: center;
   font-size: 0.9rem;
   opacity: 0.7;
