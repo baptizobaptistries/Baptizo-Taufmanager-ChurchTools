@@ -1247,10 +1247,10 @@ const allPersons = uniquePersons; // alias for compatibility
 const filteredPersons = computed(() => {
   let list = uniquePersons.value;
   if (peopleFilter.value === 'interested') {
-    list = list.filter(p => !p.fields.seminar_besucht_am && !p.fields.getauft_am && !p.fields.urkunde_ueberreicht && !p.fields.in_gemeinde_integriert);
+    list = list.filter(p => !p.fields.seminar_besucht_am && !p.fields.getauft_am);
   }
   else if (peopleFilter.value === 'seminar') {
-    list = list.filter(p => p.fields.seminar_besucht_am && !p.fields.getauft_am && !p.fields.urkunde_ueberreicht && !p.fields.in_gemeinde_integriert);
+    list = list.filter(p => p.fields.seminar_besucht_am && !p.fields.getauft_am);
   }
   else if (peopleFilter.value === 'baptized') {
     list = list.filter(p => p.fields.getauft_am);
@@ -1828,9 +1828,6 @@ onMounted(() => loadData());
 
 
 /* .inactive styling (opacity) removed per user request */
-.people-table tr.inactive {
-  /* No opacity */
-}
 
 .clickable-row {
   cursor: pointer;

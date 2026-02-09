@@ -18,13 +18,13 @@ export class PersonService implements DataProvider {
             return [];
         }
 
-        const interestGroup = await this.fetchGroupInternal(parseInt(settings.interestGroupId), 'Taufinteressenten');
-        const baptizedGroup = await this.fetchGroupInternal(parseInt(settings.baptizedGroupId), 'Getaufte');
+        const interestGroup = await this.fetchGroupInternal(parseInt(settings.interestGroupId), 'Taufinteressenten', parseInt(settings.interestGroupId), parseInt(settings.baptizedGroupId));
+        const baptizedGroup = await this.fetchGroupInternal(parseInt(settings.baptizedGroupId), 'Getaufte', parseInt(settings.interestGroupId), parseInt(settings.baptizedGroupId));
 
         return [interestGroup, baptizedGroup];
     }
 
-    private async fetchGroupInternal(groupId: number, title: string): Promise<BaptizoGroup> {
+    private async fetchGroupInternal(groupId: number, title: string, interestGroupId: number, baptizedGroupId: number): Promise<BaptizoGroup> {
         console.log(`[Baptizo] Versuche Daten zu laden für Gruppe: ${groupId} (${title})`);
 
 
@@ -86,6 +86,24 @@ export class PersonService implements DataProvider {
                         taufmanager_onboarding: personDetail.taufmanager_onboarding || null,
                         taufmanager_offboarding: personDetail.taufmanager_offboarding || null
                     };
+
+                    // SOFT SYNC: Check for baptism date consistency
+                    const hasBaptismDate = !!personDetail.taufmanager_taufe;
+
+                    if (groupId === baptizedGroupId && !hasBaptismDate) {
+                        console.log(`[Baptizo] ⚠ Soft Sync: ${personDetail.firstName} in Baptized group but NO date. Moving to Interest.`);
+                        // Attempt to fix sync issues: add to new group FIRST, then remove from old
+                        await this.addPersonToGroup(m.personId, interestGroupId);
+                        await this.removePersonFromGroup(m.personId, baptizedGroupId);
+                        // Do NOT return; let the person be rendered in the current group result 
+                        // so they don't disappear during the move. They will be in the correct group next refresh.
+                    }
+
+                    if (groupId === interestGroupId && hasBaptismDate) {
+                        console.log(`[Baptizo] ⚠ Soft Sync: ${personDetail.firstName} in Interest group but HAS date. Moving to Baptized.`);
+                        await this.addPersonToGroup(m.personId, baptizedGroupId);
+                        await this.removePersonFromGroup(m.personId, interestGroupId);
+                    }
 
                     // CRITICAL: Skip persons with offboarding date - they left the Taufmanager
                     if (personDetail.taufmanager_offboarding) {
@@ -220,21 +238,15 @@ export class PersonService implements DataProvider {
         console.warn(`[Baptizo] Delete person ${id} not implemented in real provider`);
     }
 
-    // Helper: Add person to group (Participant role usually 23 or 2, checking masterdata or using default)
     async addPersonToGroup(personId: number, groupId: number): Promise<void> {
         console.log(`[Baptizo] Adding person ${personId} to group ${groupId}...`);
         try {
-            await churchtoolsClient.post(`/groups/${groupId}/members`, {
-                personId: personId,
-                groupTypeRoleId: 23 // Standard Participant role in many CT setups, adjustment might be needed
+            const res = await (churchtoolsClient as any).put(`/groups/${groupId}/members/${personId}`, {
+                groupTypeRoleId: 22
             });
+            console.log(`[Baptizo] ✓ Successfully added person ${personId} to group ${groupId}`, res?.data || res || '');
         } catch (e: any) {
-            // If already in group, ignore 400/409
-            if (e.response?.status === 400 || e.response?.status === 409) {
-                console.log(`[Baptizo] Person ${personId} is already in group ${groupId}`);
-            } else {
-                console.error(`[Baptizo] Failed to add person ${personId} to group ${groupId}`, e);
-            }
+            console.error(`[Baptizo] ❌ Failed to add person ${personId} to group ${groupId}:`, e.response?.data || e.message);
         }
     }
 
@@ -242,13 +254,13 @@ export class PersonService implements DataProvider {
     async removePersonFromGroup(personId: number, groupId: number): Promise<void> {
         console.log(`[Baptizo] Removing person ${personId} from group ${groupId}...`);
         try {
-            // Using a generic request approach if .delete is missing in the client type
-            await (churchtoolsClient as any).delete(`/groups/${groupId}/members/${personId}`);
+            const res = await (churchtoolsClient as any).delete(`/groups/${groupId}/members/${personId}`);
+            console.log(`[Baptizo] ✓ Successfully removed person ${personId} from group ${groupId}`, res?.data || res || '');
         } catch (e: any) {
             if (e.response?.status === 404) {
                 console.log(`[Baptizo] Person ${personId} not in group ${groupId}, skip removal.`);
             } else {
-                console.error(`[Baptizo] Failed to remove person ${personId} from group ${groupId}`, e);
+                console.error(`[Baptizo] ❌ Failed to remove person ${personId} from group ${groupId}:`, e.response?.data || e.message);
             }
         }
     }
