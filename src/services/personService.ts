@@ -53,10 +53,21 @@ export class PersonService implements DataProvider {
                 }
             }
 
-            // Filter out leaders (groupTypeRoleId 1 = Leader, 23/other = Participant)
-            const ctPersons = allMembers.filter(m => m.groupTypeRoleId !== 1);
+            // IDENTIFY LEADERS/ADMINS: Anyone who hasn't role 22 (Participant)
+            // or is PID 1 (Stefan) should be excluded from sync.
+            const exclusionPids = new Set(allMembers
+                .filter(m => m.groupTypeRoleId !== 22)
+                .map(m => m.personId));
 
-            console.log(`[Baptizo] API Erfolg für Gruppe ${groupId}. Gesamt: ${allMembers.length}, Teilnehmer: ${ctPersons.length}`);
+            // ADD pid 1 as explicit protection
+            exclusionPids.add(1);
+
+            // Final participants for sync: Must have role 22 AND no leadership roles
+            const ctPersons = allMembers.filter(m =>
+                m.groupTypeRoleId === 22 && !exclusionPids.has(m.personId)
+            );
+
+            console.log(`[Baptizo] API Erfolg für Gruppe ${groupId}. Gesamt: ${allMembers.length}, Teilnehmer (Role 22 Only): ${ctPersons.length}`);
 
             if (ctPersons.length === 0) {
                 console.warn(`[Baptizo] Verbindung steht, aber Gruppe ${groupId} hat keine Teilnehmer.`);
@@ -265,13 +276,12 @@ export class PersonService implements DataProvider {
     async addPersonToGroup(personId: number, groupId: number): Promise<void> {
         console.log(`[Baptizo] Adding person ${personId} to group ${groupId}...`);
         try {
-            // Using a more generic request approach to ensure compatibility
-            const res = await (churchtoolsClient as any).axiosInstance.request({
-                method: 'PUT',
-                url: `/groups/${groupId}/members/${personId}`,
-                data: { groupTypeRoleId: 22 }
+            // Using internal axios instance (ax) for maximum reliability across environments
+            const ax = (churchtoolsClient as any).ax || (churchtoolsClient as any);
+            await ax.put(`/groups/${groupId}/members/${personId}`, {
+                groupTypeRoleId: 22
             });
-            console.log(`[Baptizo] ✓ Successfully added person ${personId} to group ${groupId}. Status: ${res.status}`);
+            console.log(`[Baptizo] ✓ Successfully added person ${personId} to group ${groupId}.`);
         } catch (e: any) {
             console.error(`[Baptizo] ❌ Failed to add person ${personId} to group ${groupId}:`, e.response?.data || e.message);
         }
@@ -281,24 +291,14 @@ export class PersonService implements DataProvider {
     async removePersonFromGroup(personId: number, groupId: number): Promise<void> {
         console.log(`[Baptizo] Removing person ${personId} from group ${groupId}...`);
         try {
-            // Using axiosInstance directly if available, or the generic request method
-            const res = await (churchtoolsClient as any).axiosInstance.request({
-                method: 'DELETE',
-                url: `/groups/${groupId}/members/${personId}`
-            });
-            console.log(`[Baptizo] ✓ Successfully removed person ${personId} from group ${groupId}. Status: ${res.status}`);
+            const ax = (churchtoolsClient as any).ax || (churchtoolsClient as any);
+            await ax.delete(`/groups/${groupId}/members/${personId}`);
+            console.log(`[Baptizo] ✓ Successfully removed person ${personId} from group ${groupId}.`);
         } catch (e: any) {
             if (e.response?.status === 404) {
                 console.log(`[Baptizo] Person ${personId} not in group ${groupId}, skip removal.`);
             } else {
                 console.error(`[Baptizo] ❌ Failed to remove person ${personId} from group ${groupId}:`, e.response?.data || e.message);
-                // Fallback attempt: some environments might have weird issues with the generic client
-                try {
-                    await (churchtoolsClient as any).delete(`/groups/${groupId}/members/${personId}`);
-                    console.log(`[Baptizo] ✓ Retry removal success via .delete()`);
-                } catch (e2) {
-                    console.error('[Baptizo] ❌ Retry removal also failed.');
-                }
             }
         }
     }
@@ -395,11 +395,27 @@ export class PersonService implements DataProvider {
 
         try {
             // 1. Fetch current members of target groups for efficient lookup
-            const interestRes = await churchtoolsClient.get<any>(`/groups/${interestGroupId}/members`);
-            const baptizedRes = await churchtoolsClient.get<any>(`/groups/${baptizedGroupId}/members`);
+            // IDENTIFY LEADERS/ADMINS: Anyone who hasn't role 22 (Participant)
+            // or is PID 1 (Stefan) should be excluded from sync.
+            const interestExclusions = new Set((interestRes.data || interestRes || [])
+                .filter((m: any) => m.groupTypeRoleId !== 22)
+                .map((m: any) => m.personId));
+            const baptizedExclusions = new Set((baptizedRes.data || baptizedRes || [])
+                .filter((m: any) => m.groupTypeRoleId !== 22)
+                .map((m: any) => m.personId));
 
-            const interestMemberIds = new Set((interestRes.data || interestRes || []).map((m: any) => m.personId));
-            const baptizedMemberIds = new Set((baptizedRes.data || baptizedRes || []).map((m: any) => m.personId));
+            interestExclusions.add(1);
+            baptizedExclusions.add(1);
+
+            const interestMemberIds = new Set((interestRes.data || interestRes || [])
+                .filter((m: any) => m.groupTypeRoleId === 22 && !interestExclusions.has(m.personId))
+                .map((m: any) => m.personId));
+            const baptizedMemberIds = new Set((baptizedRes.data || baptizedRes || [])
+                .filter((m: any) => m.groupTypeRoleId === 22 && !baptizedExclusions.has(m.personId))
+                .map((m: any) => m.personId));
+
+            // Combined exclusion list for the search/discovery phase
+            const allExclusions = new Set([...interestExclusions, ...baptizedExclusions]);
 
             // 2. Iterate ALL persons (Pagination)
             let page = 1;
@@ -419,6 +435,8 @@ export class PersonService implements DataProvider {
 
                 for (const p of persons) {
                     const pid = p.id;
+                    if (allExclusions.has(pid)) continue; // SKIP LEADERS
+
                     const name = `${p.firstName} ${p.lastName}`;
 
                     // Detail fetch for custom fields
