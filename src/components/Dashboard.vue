@@ -1967,10 +1967,11 @@ onMounted(() => loadData());
 .faq-subtitle {
   color: #aaa;
   font-size: 0.9rem;
-  margin: 0.5rem 0 0 0;
+  margin: 0.5rem auto 0; /* Auto margin for centering */
   line-height: 1.4;
   text-align: center !important;
   display: block;
+  max-width: 800px; /* Match intro-text */
 }
 
 .faq-contact-link {
@@ -2099,6 +2100,12 @@ onMounted(() => loadData());
   color: #92C9D6;
   text-decoration: none;
   font-weight: bold;
+}
+
+.baptizo-footer p {
+  max-width: 800px;
+  margin: 0 auto;
+  display: block;
 }
 
 .loading-state {
