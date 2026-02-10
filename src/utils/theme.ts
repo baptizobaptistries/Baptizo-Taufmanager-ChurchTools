@@ -36,12 +36,10 @@ export const getAvatarColor = (person: {
     if (AVATAR_COLOR_MODE === 'status' && person.fields) {
         const { seminar_besucht_am, getauft_am, urkunde_ueberreicht, in_gemeinde_integriert } = person.fields;
 
-        // Logical Hierarchy (Specific Rules applied)
+        // 1. Certificate Overcomes: Baptized AND Certificate -> Green/Mint
+        if (getauft_am && urkunde_ueberreicht) return COLOR_MINT;
 
-        // 1. Fully Integrated: Baptized AND (Integrated OR Certificate) -> Green/Mint
-        if (getauft_am && (in_gemeinde_integriert || urkunde_ueberreicht)) return COLOR_MINT;
-
-        // 2. Baptized -> Orange
+        // 2. Baptized (includes Integration): -> Orange
         if (getauft_am) return COLOR_ORANGE;
 
         // 3. Seminar visited -> Purple/Lila (Overrides Integrated BEFORE Baptism)
