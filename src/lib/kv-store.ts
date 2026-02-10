@@ -19,7 +19,11 @@ export interface AdminSettings {
     baptismDateId: string;
     certificateDateId: string;
     integratedDateId: string;
+    onboardingDateId: string;
+    offboardingDateId: string;
     statusFieldId: string;
+    statusAktivId: string;
+    statusInaktivId: string;
     calendarId: string;
 }
 
@@ -145,14 +149,18 @@ export async function saveAdminSettings(settings: AdminSettings): Promise<boolea
  */
 export function getDefaultAdminSettings(): AdminSettings {
     return {
-        interestGroupId: '13',
-        baptizedGroupId: '16',
-        seminarDateId: '',
-        baptismDateId: '',
-        certificateDateId: '',
-        integratedDateId: '',
-        statusFieldId: '',
-        calendarId: '7'
+        interestGroupId: '652',
+        baptizedGroupId: '655',
+        seminarDateId: '175',
+        baptismDateId: '178',
+        certificateDateId: '181',
+        integratedDateId: '184',
+        onboardingDateId: '172',
+        offboardingDateId: '187',
+        statusFieldId: '190',
+        statusAktivId: '4',
+        statusInaktivId: '5',
+        calendarId: '67'
     };
 }
 
