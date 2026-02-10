@@ -108,12 +108,34 @@ export class PersonService implements DataProvider {
                     const hasOnboarding = !!personDetail.taufmanager_onboarding;
                     const hasOffboarding = !!personDetail.taufmanager_offboarding;
 
-                    // If NOT enrolled or OFFBOARDED, they should not be in either group
-                    if (!hasOnboarding || hasOffboarding) {
-                        console.log(`[Baptizo] ⚠ Soft Sync: ${personDetail.firstName} is ${!hasOnboarding ? 'not enrolled' : 'offboarded'}. Removing from groups.`);
+                    // ROLE PROTECTION: Skip automated sync for non-participants (Role 22 = Teilnehmer)
+                    const roleId = m.groupTypeRoleId;
+                    if (roleId !== 22) {
+                        return {
+                            id: m.personId || personDetail.id,
+                            firstName: personDetail.firstName,
+                            lastName: personDetail.lastName,
+                            status: (String(personDetail.taufmanager_status) === '5') ? 'inactive' : 'active',
+                            entry_date: entryDate,
+                            fields,
+                            imageUrl: personDetail.imageUrl || `https://ui-avatars.com/api/?name=${personDetail.firstName}+${personDetail.lastName}&background=random`,
+                            email: personDetail.email || null,
+                            mobile: personDetail.mobile || null,
+                            phone: personDetail.phone || null
+                        };
+                    }
+
+                    // If OFFBOARDED, they should not be in either group
+                    if (hasOffboarding) {
+                        console.log(`[Baptizo] ⚠ Soft Sync: ${personDetail.firstName} is offboarded. Removing from groups.`);
                         await this.removePersonFromGroup(m.personId, interestGroupId);
                         await this.removePersonFromGroup(m.personId, baptizedGroupId);
-                        return; // Done for this person
+                        return; // Done
+                    }
+
+                    // Onboarding Fallback: If in group but no onboarding date, we KEEP them (Discovery orphaned participants)
+                    if (!hasOnboarding) {
+                        console.log(`[Baptizo] ℹ Soft Sync: ${personDetail.firstName} has no explicit onboarding date but is in group. Keeping.`);
                     }
 
                     if (groupId === baptizedGroupId && !hasBaptismDate) {
@@ -250,6 +272,20 @@ export class PersonService implements DataProvider {
                     const hasOnboarding = !!detail.taufmanager_onboarding;
                     const hasOffboarding = !!detail.taufmanager_offboarding;
                     const taufe = detail.taufmanager_taufe;
+
+                    // Get current roles to avoid demoting leaders
+                    const interestMembers = await churchtoolsClient.get<any>(`/groups/${interestId}/members`);
+                    const baptizedMembers = await churchtoolsClient.get<any>(`/groups/${baptizedId}/members`);
+
+                    const currentRoleInterest = interestMembers.data.find((m: any) => m.personId === personId)?.groupTypeRoleId;
+                    const currentRoleBaptized = baptizedMembers.data.find((m: any) => m.personId === personId)?.groupTypeRoleId;
+                    const currentRole = currentRoleInterest || currentRoleBaptized;
+
+                    // PROTECTION: If role is NOT 22 (and not null), do NOT touch memberships automatically
+                    if (currentRole && currentRole !== 22) {
+                        console.log(`[Baptizo] 🛡 Sync Protection: Person ${personId} has role ${currentRole}. Skipping automated move.`);
+                        return;
+                    }
 
                     if (!hasOnboarding || hasOffboarding) {
                         console.log(`[Baptizo] ➔ Clearing groups for ${personId} (Offboarded or Not Enrolled)`);
