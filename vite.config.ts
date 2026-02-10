@@ -1,7 +1,7 @@
-import { defineConfig, loadEnv, type LibraryFormats } from 'vite';
+import { defineConfig, loadEnv } from 'vite';
 import vue from '@vitejs/plugin-vue';
 import { resolve } from 'path';
-import { copyFileSync, writeFileSync } from 'fs';
+import { copyFileSync, renameSync, existsSync } from 'fs';
 import manifest from './manifest.json';
 
 // https://vitejs.dev/config/
@@ -10,53 +10,8 @@ export default ({ mode }: { mode: string }) => {
     const env = loadEnv(mode, process.cwd(), '');
     process.env = { ...process.env, ...env };
 
-
     const isDevelopment = mode === 'development';
     const key = manifest.key;
-    const buildMode = env.VITE_BUILD_MODE || 'simple';
-
-    // Create a unique global name for UMD based on the extension key
-    // This prevents namespace collisions when multiple extensions are loaded
-    const globalName = `ChurchToolsExtension_${key}`;
-
-    console.log(`Building in ${buildMode} mode for key: ${key}`);
-
-    // Simple mode: Single bundle with all entry points
-    // Disable code splitting to bundle everything together
-    const simpleBuildConfig = {
-        lib: {
-            entry: resolve(__dirname, 'src/index.ts'),
-            name: globalName,
-            formats: ['es'] as LibraryFormats[],
-            fileName: (format: string) => `extension.${format}.js`,
-        },
-        rollupOptions: {
-            output: {
-                // Inline all dynamic imports to create a single bundle
-                inlineDynamicImports: true,
-            },
-        },
-    };
-
-    // Advanced mode: Code splitting with dynamic imports
-    const advancedBuildConfig = {
-        lib: {
-            entry: resolve(__dirname, 'src/index.ts'),
-            name: globalName,
-            formats: ['es'] as LibraryFormats[],
-            fileName: (format: string) => `extension.${format}.js`,
-        },
-        rollupOptions: {
-            output: {
-                // Enable manual chunks for better code splitting
-                manualChunks: undefined,
-            },
-        },
-        // Enable code splitting for dynamic imports
-        modulePreload: false,
-        // Smaller chunk size threshold for better splitting
-        chunkSizeWarningLimit: 100,
-    };
 
     const targetUrl = env.VITE_BASE_URL || 'https://baptizo.church.tools/';
 
@@ -67,87 +22,51 @@ export default ({ mode }: { mode: string }) => {
                 '/api': {
                     target: targetUrl,
                     changeOrigin: true,
-                    secure: false, // In case of self-signed certs in dev
+                    secure: false,
                 }
             }
         },
-        // Explicitly set envDir to project root to ensure .env is loaded
         envDir: process.cwd(),
-        // Explicitly define env vars for client (ensures injection into the bundle)
         define: {
-            'process.env.NODE_ENV': JSON.stringify('production'),
             'import.meta.env.VITE_BASE_URL': JSON.stringify(env.VITE_BASE_URL || 'https://baptizo.church.tools/'),
             'import.meta.env.VITE_USERNAME': JSON.stringify(env.VITE_USERNAME || ''),
             'import.meta.env.VITE_PASSWORD': JSON.stringify(env.VITE_PASSWORD || ''),
             'import.meta.env.VITE_LOGIN_TOKEN': JSON.stringify(env.VITE_LOGIN_TOKEN || ''),
         },
-        // For production library builds, use absolute path for CT compatibility
+        // Windows Build Guide: absolute base path for CT resource loading
         base: isDevelopment ? './' : `/ccm/${key}/`,
         build: {
-            ...(isDevelopment ? {} : (buildMode === 'advanced' ? advancedBuildConfig : simpleBuildConfig)),
-            // Force inline of all assets (images, fonts, etc) to avoid 404s
-            assetsInlineLimit: 1000000,
-            cssCodeSplit: false, // Force CSS to be gathered so we can inject it
-        },
-        plugins: isDevelopment ? [vue()] : [
-            vue(),
-            // Custom plugin to inject CSS into JS bundle
-            {
-                name: 'css-inject',
-                apply: 'build',
-                enforce: 'post',
-                generateBundle(opts, bundle) {
-                    let cssCode = '';
-                    // Find all CSS files
-                    for (const key in bundle) {
-                        if (bundle[key].fileName.endsWith('.css') && bundle[key].type === 'asset') {
-                            cssCode += (bundle[key] as any).source;
-                            delete bundle[key]; // Remove the file so it's not emitted
-                        }
-                    }
-                    if (cssCode) {
-                        // Inject into the entry chunk
-                        for (const key in bundle) {
-                            if (bundle[key].type === 'chunk' && (bundle[key] as any).isEntry) {
-                                const injectCode = `(function(){try{var elementStyle=document.createElement('style');elementStyle.appendChild(document.createTextNode(${JSON.stringify(cssCode)}));document.head.appendChild(elementStyle);}catch(e){console.error('vite-plugin-css-injected-by-js', e);}})();`;
-                                (bundle[key] as any).code = injectCode + (bundle[key] as any).code;
-                                break; // Only inject once (into the first entry found)
-                            }
-                        }
-                        console.log('✓ Injected CSS into JS bundle');
-                    }
-                }
+            outDir: 'dist',
+            rollupOptions: {
+                input: {
+                    main: resolve(__dirname, 'index-legacy.html'),
+                },
             },
-            // Generate final assets for ChurchTools
+            // Force inline of all assets to avoid 404s
+            assetsInlineLimit: 100000000,
+        },
+        plugins: [
+            vue(),
+            // Copy manifest.json to dist after build
             {
-                name: 'ct-assets-generation',
-                async closeBundle() {
-                    const manifestSource = resolve(__dirname, 'manifest.json');
-                    const manifestDest = resolve(__dirname, 'dist/manifest.json');
-                    const indexDest = resolve(__dirname, 'dist/index.html');
-
+                name: 'ct-post-build',
+                closeBundle() {
                     try {
-                        // 1. Copy Manifest
+                        // 1. Copy manifest
+                        const manifestSource = resolve(__dirname, 'manifest.json');
+                        const manifestDest = resolve(__dirname, 'dist/manifest.json');
                         copyFileSync(manifestSource, manifestDest);
                         console.log('✓ Copied manifest.json to dist/');
 
-                        // 2. Generate index.html for CT
-                        const indexHtmlContent = `<!DOCTYPE html>
-<html lang="de">
-<head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>${manifest.name}</title>
-</head>
-<body>
-    <div id="app"></div>
-    <script type="module" src="/ccm/${manifest.key}/extension.es.js"></script>
-</body>
-</html>`;
-                        writeFileSync(indexDest, indexHtmlContent);
-                        console.log('✓ Generated index.html in dist/');
+                        // 2. Rename index-legacy.html → index.html (CT expects index.html)
+                        const legacyHtml = resolve(__dirname, 'dist/index-legacy.html');
+                        const indexHtml = resolve(__dirname, 'dist/index.html');
+                        if (existsSync(legacyHtml)) {
+                            renameSync(legacyHtml, indexHtml);
+                            console.log('✓ Renamed index-legacy.html → index.html');
+                        }
                     } catch (error) {
-                        console.error('Failed to generate CT assets:', error);
+                        console.error('Failed to copy manifest.json:', error);
                     }
                 },
             },
