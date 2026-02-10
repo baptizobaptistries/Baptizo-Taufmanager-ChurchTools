@@ -1,7 +1,7 @@
 import { defineConfig, loadEnv, type LibraryFormats } from 'vite';
 import vue from '@vitejs/plugin-vue';
 import { resolve } from 'path';
-import { copyFileSync } from 'fs';
+import { copyFileSync, writeFileSync } from 'fs';
 import manifest from './manifest.json';
 
 // https://vitejs.dev/config/
@@ -80,12 +80,12 @@ export default ({ mode }: { mode: string }) => {
             'import.meta.env.VITE_PASSWORD': JSON.stringify(env.VITE_PASSWORD || ''),
             'import.meta.env.VITE_LOGIN_TOKEN': JSON.stringify(env.VITE_LOGIN_TOKEN || ''),
         },
-        // For production library builds, use relative paths or empty to allow loading from any location
-        base: './',
+        // For production library builds, use absolute path for CT compatibility
+        base: isDevelopment ? './' : `/ccm/${key}/`,
         build: {
             ...(isDevelopment ? {} : (buildMode === 'advanced' ? advancedBuildConfig : simpleBuildConfig)),
             // Force inline of all assets (images, fonts, etc) to avoid 404s
-            assetsInlineLimit: 100000000, // 100MB limit
+            assetsInlineLimit: 1000000,
             cssCodeSplit: false, // Force CSS to be gathered so we can inject it
         },
         plugins: isDevelopment ? [vue()] : [
@@ -117,17 +117,36 @@ export default ({ mode }: { mode: string }) => {
                     }
                 }
             },
-            // Copy manifest.json to dist after build
+            // Generate final assets for ChurchTools
             {
-                name: 'copy-manifest',
-                closeBundle() {
+                name: 'ct-assets-generation',
+                async closeBundle() {
                     const manifestSource = resolve(__dirname, 'manifest.json');
                     const manifestDest = resolve(__dirname, 'dist/manifest.json');
+                    const indexDest = resolve(__dirname, 'dist/index.html');
+
                     try {
+                        // 1. Copy Manifest
                         copyFileSync(manifestSource, manifestDest);
                         console.log('✓ Copied manifest.json to dist/');
+
+                        // 2. Generate index.html for CT
+                        const indexHtmlContent = `<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>${manifest.name}</title>
+</head>
+<body>
+    <div id="app"></div>
+    <script type="module" src="/ccm/${manifest.key}/extension.es.js"></script>
+</body>
+</html>`;
+                        writeFileSync(indexDest, indexHtmlContent);
+                        console.log('✓ Generated index.html in dist/');
                     } catch (error) {
-                        console.error('Failed to copy manifest.json:', error);
+                        console.error('Failed to generate CT assets:', error);
                     }
                 },
             },
