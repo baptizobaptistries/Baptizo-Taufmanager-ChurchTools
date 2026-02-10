@@ -274,11 +274,14 @@ export class PersonService implements DataProvider {
                     const taufe = detail.taufmanager_taufe;
 
                     // Get current roles to avoid demoting leaders
-                    const interestMembers = await churchtoolsClient.get<any>(`/groups/${interestId}/members`);
-                    const baptizedMembers = await churchtoolsClient.get<any>(`/groups/${baptizedId}/members`);
+                    const resInterest = await churchtoolsClient.get<any>(`/groups/${interestId}/members`);
+                    const resBaptized = await churchtoolsClient.get<any>(`/groups/${baptizedId}/members`);
 
-                    const currentRoleInterest = interestMembers.data.find((m: any) => m.personId === personId)?.groupTypeRoleId;
-                    const currentRoleBaptized = baptizedMembers.data.find((m: any) => m.personId === personId)?.groupTypeRoleId;
+                    const interestMembers: any[] = Array.isArray(resInterest) ? resInterest : (resInterest.data || []);
+                    const baptizedMembers: any[] = Array.isArray(resBaptized) ? resBaptized : (resBaptized.data || []);
+
+                    const currentRoleInterest = interestMembers.find((m: any) => m.personId === personId)?.groupTypeRoleId;
+                    const currentRoleBaptized = baptizedMembers.find((m: any) => m.personId === personId)?.groupTypeRoleId;
                     const currentRole = currentRoleInterest || currentRoleBaptized;
 
                     // PROTECTION: If role is NOT 22 (and not null), do NOT touch memberships automatically
