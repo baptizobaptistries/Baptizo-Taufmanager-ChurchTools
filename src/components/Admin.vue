@@ -318,6 +318,32 @@ async function runCleanupTestData() {
   }
 }
 
+async function runCreateTestAppointments() {
+  if (!currentProfileSettings.value.calendarId) return;
+  provisioning.value = true;
+  try {
+    await setupService.value.createTestAppointments(currentProfileSettings.value.calendarId);
+    showToast('Test-Termine wurden erstellt.', 'success');
+  } catch (error: any) {
+    showToast(`Fehler: ${error.message}`, 'error');
+  } finally {
+    provisioning.value = false;
+  }
+}
+
+async function runDeleteTestAppointments() {
+  if (!currentProfileSettings.value.calendarId) return;
+  provisioning.value = true;
+  try {
+    await setupService.value.deleteTestAppointments(currentProfileSettings.value.calendarId);
+    showToast('Test-Termine wurden entfernt.', 'info');
+  } catch (error: any) {
+    showToast(`Fehler: ${error.message}`, 'error');
+  } finally {
+    provisioning.value = false;
+  }
+}
+
 function updateProfileSettings(newVal: ProfileSettings) {
   if (settings.value.activeProfile === 'development') {
     settings.value.development = newVal;

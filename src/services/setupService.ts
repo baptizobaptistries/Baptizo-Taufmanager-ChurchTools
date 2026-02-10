@@ -173,7 +173,9 @@ export class SetupService {
             name: name,
             groupTypeId: 1, // Standard / Kleingruppe
             groupCategoryId: 1, // Standard
-            groupStatusId: 1 // Aktiv
+            groupStatusId: 1, // Aktiv
+            campusId: 0, // 0 = All Campuses / No specific
+            force: true // Create even if name exists (or handle existing logic later)
         });
         return (res as any).id || (res as any).data?.id;
     }
@@ -183,9 +185,84 @@ export class SetupService {
         const res = await churchtoolsClient.post('/calendars', {
             name: name,
             color: '#3E70CE',
-            type: 'church' // Mandatory for v2
+            type: 'church', // Mandatory for v2
+            sortKey: 0 // Required
         });
         return (res as any).id || (res as any).data?.id;
+    }
+
+    /**
+     * Creates test appointments in the given calendar
+     */
+    async createTestAppointments(calendarId: string): Promise<void> {
+        console.log(`[Baptizo] Creating Test Appointments in Calendar ${calendarId}...`);
+
+        // 1. Seminar (Next Month, Saturday 10:00)
+        const seminarDate = new Date();
+        seminarDate.setMonth(seminarDate.getMonth() + 1);
+        seminarDate.setDate(15);
+        seminarDate.setHours(10, 0, 0, 0);
+        const seminarEnd = new Date(seminarDate);
+        seminarEnd.setHours(12, 0, 0, 0);
+
+        await this.createAppointment(calendarId, {
+            title: `Taufseminar (Test)`,
+            startDate: seminarDate.toISOString(),
+            endDate: seminarEnd.toISOString(),
+            address: {
+                city: 'Musterstadt',
+                street: 'Hauptstr. 1'
+            }
+        });
+
+        // 2. Baptism Service (Two Months later, Sunday 10:00)
+        const baptismDate = new Date();
+        baptismDate.setMonth(baptismDate.getMonth() + 2);
+        baptismDate.setDate(20);
+        baptismDate.setHours(10, 0, 0, 0);
+        const baptismEnd = new Date(baptismDate);
+        baptismEnd.setHours(12, 0, 0, 0);
+
+        await this.createAppointment(calendarId, {
+            title: `Taufgottesdienst (Test)`,
+            startDate: baptismDate.toISOString(),
+            endDate: baptismEnd.toISOString(),
+            address: {
+                city: 'Musterstadt',
+                street: 'Kirchweg 1'
+            }
+        });
+    }
+
+    /**
+     * Deletes all future appointments in the given calendar
+     */
+    async deleteTestAppointments(calendarId: string): Promise<void> {
+        console.log(`[Baptizo] Deleting Test Appointments from Calendar ${calendarId}...`);
+
+        // Fetch future appointments
+        const fromDate = new Date().toISOString().split('T')[0];
+        const res = await churchtoolsClient.get<any[]>(`/calendars/${calendarId}/appointments?from=${fromDate}`);
+        const appointments = Array.isArray(res) ? res : (res as any).data || [];
+
+        for (const appt of appointments) {
+            console.log(`[Baptizo] Deleting Appointment: ${appt.title} (ID: ${appt.id})`);
+            await churchtoolsClient.deleteApi(`/calendars/${calendarId}/appointments/${appt.id}`);
+        }
+    }
+
+    private async createAppointment(calendarId: string, data: any): Promise<void> {
+        try {
+            await churchtoolsClient.post(`/calendars/${calendarId}/appointments`, {
+                title: data.title,
+                startDate: data.startDate,
+                endDate: data.endDate,
+                address: data.address
+            });
+            console.log(`[Baptizo] Created Appointment: ${data.title}`);
+        } catch (e: any) {
+            console.error(`[Baptizo] Failed to create appointment ${data.title}:`, e.message);
+        }
     }
 
     private async ensurePersonFields(): Promise<void> {
