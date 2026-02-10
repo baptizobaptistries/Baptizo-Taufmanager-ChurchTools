@@ -108,6 +108,15 @@ export class PersonService implements DataProvider {
                     const hasOnboarding = !!personDetail.taufmanager_onboarding;
                     const hasOffboarding = !!personDetail.taufmanager_offboarding;
 
+                    // Entry date fallback logic:
+                    let entryDate = personDetail.taufmanager_onboarding; // Prio 1
+                    if (!entryDate && m.comment && m.comment.match(/^\d{4}-\d{2}-\d{2}$/)) {
+                        entryDate = m.comment;
+                    }
+                    if (!entryDate) {
+                        entryDate = m.memberStartDate; // Fallback
+                    }
+
                     // ROLE PROTECTION: Skip automated sync for non-participants (Role 22 = Teilnehmer)
                     const roleId = m.groupTypeRoleId;
                     if (roleId !== 22) {
@@ -155,18 +164,6 @@ export class PersonService implements DataProvider {
                         return;
                     }
 
-                    // Entry date fallback logic:
-                    let entryDate = personDetail.taufmanager_onboarding; // Prio 1
-
-                    if (!entryDate && m.comment) {
-                        if (m.comment.match(/^\d{4}-\d{2}-\d{2}$/)) {
-                            entryDate = m.comment;
-                        }
-                    }
-
-                    if (!entryDate) {
-                        entryDate = m.memberStartDate; // Fallback
-                    }
 
                     members.push({
                         id: m.personId || personDetail.id,

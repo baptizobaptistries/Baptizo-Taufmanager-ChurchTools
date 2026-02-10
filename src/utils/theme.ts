@@ -34,7 +34,7 @@ export const getAvatarColor = (person: {
     if ((AVATAR_COLOR_MODE as any) === 'mono') return MONO_COLOR;
 
     if (AVATAR_COLOR_MODE === 'status' && person.fields) {
-        const { seminar_besucht_am, getauft_am, urkunde_ueberreicht, in_gemeinde_integriert } = person.fields;
+        const { seminar_besucht_am, getauft_am, urkunde_ueberreicht } = person.fields;
 
         // 1. Certificate Overcomes: Baptized AND Certificate -> Green/Mint
         if (getauft_am && urkunde_ueberreicht) return COLOR_MINT;
