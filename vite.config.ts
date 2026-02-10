@@ -75,7 +75,8 @@ export default ({ mode }: { mode: string }) => {
         envDir: process.cwd(),
         // Explicitly define env vars for client (ensures injection into the bundle)
         define: {
-            'process.env': {},
+            'process.env': '({})',
+            'process': '({ env: {} })',
             'import.meta.env.VITE_BASE_URL': JSON.stringify(env.VITE_BASE_URL || 'https://baptizo.church.tools/'),
             'import.meta.env.VITE_USERNAME': JSON.stringify(env.VITE_USERNAME || ''),
             'import.meta.env.VITE_PASSWORD': JSON.stringify(env.VITE_PASSWORD || ''),
