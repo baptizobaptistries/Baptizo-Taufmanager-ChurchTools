@@ -99,11 +99,72 @@ export class SetupService {
         // 3. Person Fields
         await this.ensurePersonFields();
 
-        // We don't necessarily update IDs for fields in settings because 
-        // the app uses the 'taufmanager_{key}' naming convention anyway, 
-        // but we could store the IDs if needed for future proofing.
-
         return newSettings;
+    }
+
+    /**
+     * Removes all assets associated with the current profile/suffix
+     * and returns cleared settings.
+     */
+    async runFullCleanup(settings: ProfileSettings): Promise<ProfileSettings> {
+        console.log(`[Baptizo] Running Full Cleanup (Suffix: ${this.suffix})...`);
+
+        // 1. Delete Groups
+        if (settings.interestGroupId) {
+            await this.deleteAsset('groups', settings.interestGroupId);
+        }
+        if (settings.baptizedGroupId) {
+            await this.deleteAsset('groups', settings.baptizedGroupId);
+        }
+
+        // 2. Delete Calendar
+        if (settings.calendarId) {
+            await this.deleteAsset('calendars', settings.calendarId);
+        }
+
+        // 3. Delete Person Fields
+        const fieldsRes = await churchtoolsClient.get<any[]>('/fields');
+        const allFields = Array.isArray(fieldsRes) ? fieldsRes : ((fieldsRes as any).data || []);
+
+        const fieldKeysToDelete = [
+            'taufmanager_onboarding',
+            'taufmanager_seminar',
+            'taufmanager_taufe',
+            'taufmanager_urkunde',
+            'taufmanager_integration',
+            'taufmanager_offboarding',
+            'taufmanager_status'
+        ].map(k => k + this.suffix);
+
+        for (const f of allFields) {
+            if (fieldKeysToDelete.includes(f.key) || fieldKeysToDelete.includes(f.column)) {
+                console.log(`[Baptizo] Deleting Field: ${f.key} (ID: ${f.id})`);
+                await churchtoolsClient.deleteApi(`/fields/${f.id}`);
+            }
+        }
+
+        // Return empty settings
+        return {
+            interestGroupId: '',
+            baptizedGroupId: '',
+            calendarId: '',
+            seminarDateId: '',
+            baptismDateId: '',
+            certificateDateId: '',
+            integratedDateId: '',
+            onboardingDateId: '',
+            offboardingDateId: '',
+            statusFieldId: ''
+        };
+    }
+
+    private async deleteAsset(endpoint: string, id: string | number): Promise<void> {
+        try {
+            console.log(`[Baptizo] Deleting Asset: ${endpoint}/${id}`);
+            await churchtoolsClient.deleteApi(`/${endpoint}/${id}`);
+        } catch (e: any) {
+            console.warn(`[Baptizo] Failed to delete asset ${endpoint}/${id}:`, e.message);
+        }
     }
 
     private async createGroup(name: string): Promise<number> {
@@ -149,11 +210,11 @@ export class SetupService {
         ];
 
         for (const f of fields) {
-            const fullKey = f.key + this.suffix;
+            const fullKey = f.key + this.suffix; // Suffix added to internal key
             const fullName = f.name + (this.suffix ? ` (${this.suffix})` : '');
 
             try {
-                console.log(`[Baptizo] Creating Field: ${fullKey}`);
+                console.log(`[Baptizo] Setting up Field: ${fullKey} (${fullName})`);
                 await churchtoolsClient.post('/fields', {
                     key: fullKey,
                     name: fullName,

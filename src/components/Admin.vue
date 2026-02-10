@@ -100,9 +100,49 @@
           <ul class="checklist">
             <li v-for="(val, key) in status.fields" :key="key" :class="{ complete: val }">
               <span class="status-icon">{{ val ? '✓' : '○' }}</span>
-              <span class="label">Feld: taufmanager_{{ key }}</span>
+              <span class="label">Feld: taufmanager_{{ key }}{{ currentSuffix }}</span>
             </li>
           </ul>
+        </div>
+      </section>
+
+      <!-- Advanced / Maintenance Section -->
+      <section class="maintenance-section">
+        <div class="maintenance-grid">
+          <!-- Cleanup Card -->
+          <div class="maint-card">
+            <h4>System-Bereinigung</h4>
+            <p>Löscht alle erstellten Assets (Gruppen, Kalender, Felder) des aktuellen Profils.</p>
+            <button 
+              class="btn-outline-danger" 
+              @click="confirmAndRunCleanup"
+              :disabled="provisioning"
+            >
+              SYSTEM ZURÜCKSETZEN
+            </button>
+          </div>
+
+          <!-- Test Data Card -->
+          <div class="maint-card">
+            <h4>Test-Daten</h4>
+            <p>Erstellt Test-Personen und setzt Hannes als Leiter ein (nur für Sandbox-Tests).</p>
+            <div class="btn-group-maint">
+              <button 
+                class="btn-outline-info" 
+                @click="runProvisionTestData"
+                :disabled="provisioning || !isSetupComplete"
+              >
+                DATEN LADEN
+              </button>
+              <button 
+                class="btn-outline-secondary" 
+                @click="runCleanupTestData"
+                :disabled="provisioning"
+              >
+                LEEREN
+              </button>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -111,16 +151,11 @@
     <!-- Modal for confirmation -->
     <div v-if="showConfirmModal" class="modal-overlay">
       <div class="modal-card">
-        <h2>Installation starten?</h2>
-        <p>
-          Es werden neue Gruppen, Kalender und Felder in dieser ChurchTools-Instanz angelegt. 
-          Bestehende Daten werden dabei <strong>nicht</strong> gelöscht.
-          <br/><br/>
-          Aktuelles Profil: <strong>{{ settings.activeProfile }}</strong>
-        </p>
+        <h2>{{ confirmModalTitle }}</h2>
+        <p v-html="confirmModalText"></p>
         <div class="modal-actions">
           <button @click="showConfirmModal = false" class="btn-cancel">Abbrechen</button>
-          <button @click="runSetup" class="btn-confirm">Ja, Jetzt Installieren</button>
+          <button @click="handleConfirmAction" class="btn-confirm">Fortfahren</button>
         </div>
       </div>
     </div>
@@ -134,8 +169,9 @@
 
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue';
-import { getAdminSettings, saveAdminSettings, getDefaultAdminSettings, type AdminSettings, type EnvironmentProfile } from '../lib/kv-store';
+import { getAdminSettings, saveAdminSettings, getDefaultAdminSettings, type AdminSettings, type EnvironmentProfile, type ProfileSettings } from '../lib/kv-store';
 import { SetupService, type ProvisioningStatus } from '../services/setupService';
+import { TestDataService } from '../services/testDataService';
 
 const emit = defineEmits(['close']);
 
@@ -150,9 +186,13 @@ const status = ref<ProvisioningStatus>({
 
 const provisioning = ref(false);
 const showConfirmModal = ref(false);
+const confirmAction = ref<'setup' | 'cleanup'>('setup');
 const toast = ref<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
 
-const setupService = new SetupService();
+// Services (reactive to profile)
+const currentSuffix = computed(() => settings.value.activeProfile === 'end-user' ? '_test' : '');
+const setupService = computed(() => new SetupService(currentSuffix.value));
+const testDataService = computed(() => new TestDataService(currentSuffix.value));
 
 // Computed
 const currentProfileSettings = computed(() => {
@@ -164,14 +204,29 @@ const isSetupComplete = computed(() => {
 });
 
 const setupButtonText = computed(() => {
-  if (provisioning.value) return 'Installiere...';
+  if (provisioning.value) return 'Bitte warten...';
   if (isSetupComplete.value) return 'System Bereit';
   return 'JETZT INSTALLIEREN';
 });
 
+const confirmModalTitle = computed(() => {
+  return confirmAction.value === 'setup' ? 'Installation starten?' : 'System zurücksetzen?';
+});
+
+const confirmModalText = computed(() => {
+  if (confirmAction.value === 'setup') {
+    return `Es werden neue Gruppen, Kalender und Felder in dieser ChurchTools-Instanz angelegt. <br/>
+            Suffix: <strong>${currentSuffix.value || 'Keiner'}</strong><br/>
+            Profil: <strong>${settings.value.activeProfile}</strong>`;
+  } else {
+    return `<span style="color: #ff4e50; font-weight: bold;">WARNUNG:</span> Dies löscht alle vom Taufmanager angelegten Gruppen, Kalender und Felder in diesem Profil.<br/>
+            Profil: <strong>${settings.value.activeProfile}</strong>`;
+  }
+});
+
 // Methods
 async function loadStatus() {
-  status.value = await setupService.getProvisioningStatus(currentProfileSettings.value);
+  status.value = await setupService.value.getProvisioningStatus(currentProfileSettings.value);
 }
 
 onMounted(async () => {
@@ -191,7 +246,18 @@ async function toggleProfile(profile: EnvironmentProfile) {
 
 function confirmAndRunSetup() {
   if (isSetupComplete.value) return;
+  confirmAction.value = 'setup';
   showConfirmModal.value = true;
+}
+
+function confirmAndRunCleanup() {
+  confirmAction.value = 'cleanup';
+  showConfirmModal.value = true;
+}
+
+function handleConfirmAction() {
+  if (confirmAction.value === 'setup') runSetup();
+  else runCleanup();
 }
 
 async function runSetup() {
@@ -199,24 +265,64 @@ async function runSetup() {
   provisioning.value = true;
   
   try {
-    const updatedProfileSettings = await setupService.runFullSetup(currentProfileSettings.value);
-    
-    // Update local settings object
-    if (settings.value.activeProfile === 'development') {
-      settings.value.development = updatedProfileSettings;
-    } else {
-      settings.value['end-user'] = updatedProfileSettings;
-    }
-    
+    const updatedProfileSettings = await setupService.value.runFullSetup(currentProfileSettings.value);
+    updateProfileSettings(updatedProfileSettings);
     await saveAdminSettings(settings.value);
     await loadStatus();
-    
     showToast('Installation erfolgreich abgeschlossen!', 'success');
   } catch (error: any) {
-    console.error('Setup failed:', error);
-    showToast(`Fehler bei der Installation: ${error.message}`, 'error');
+    showToast(`Fehler: ${error.message}`, 'error');
   } finally {
     provisioning.value = false;
+  }
+}
+
+async function runCleanup() {
+  showConfirmModal.value = false;
+  provisioning.value = true;
+  
+  try {
+    const clearedSettings = await setupService.value.runFullCleanup(currentProfileSettings.value);
+    updateProfileSettings(clearedSettings);
+    await saveAdminSettings(settings.value);
+    await loadStatus();
+    showToast('System erfolgreich zurückgesetzt.', 'success');
+  } catch (error: any) {
+    showToast(`Fehler beim Cleanup: ${error.message}`, 'error');
+  } finally {
+    provisioning.value = false;
+  }
+}
+
+async function runProvisionTestData() {
+  provisioning.value = true;
+  try {
+    await testDataService.value.provisionTestData(currentProfileSettings.value);
+    showToast('Test-Daten erfolgreich geladen.', 'success');
+  } catch (error: any) {
+    showToast(`Fehler: ${error.message}`, 'error');
+  } finally {
+    provisioning.value = false;
+  }
+}
+
+async function runCleanupTestData() {
+  provisioning.value = true;
+  try {
+    await testDataService.value.cleanupTestData();
+    showToast('Test-Daten wurden entfernt.', 'info');
+  } catch (error: any) {
+    showToast(`Fehler: ${error.message}`, 'error');
+  } finally {
+    provisioning.value = false;
+  }
+}
+
+function updateProfileSettings(newVal: ProfileSettings) {
+  if (settings.value.activeProfile === 'development') {
+    settings.value.development = newVal;
+  } else {
+    settings.value['end-user'] = newVal;
   }
 }
 
@@ -520,4 +626,53 @@ function showToast(message: string, type: 'success' | 'error' | 'info' = 'info')
   animation: spin 1s linear infinite;
 }
 @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+/* Maintenance & Test Data */
+.maintenance-section {
+  margin-top: 4rem;
+  padding-top: 3rem;
+  border-top: 1px solid #333;
+}
+
+.maintenance-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+}
+
+.maint-card {
+  background: #1c1c2b;
+  border-radius: 12px;
+  padding: 1.5rem;
+  border: 1px solid #333;
+  display: flex;
+  flex-direction: column;
+}
+
+.maint-card h4 { margin: 0 0 0.5rem 0; color: #fff; font-size: 1rem; }
+.maint-card p { margin: 0 0 1.5rem 0; color: #888; font-size: 0.85rem; line-height: 1.4; flex-grow: 1; }
+
+.btn-group-maint { display: flex; gap: 0.75rem; }
+
+.btn-outline-danger, .btn-outline-info, .btn-outline-secondary {
+  padding: 0.6rem 1rem;
+  border-radius: 6px;
+  font-weight: 700;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  background: transparent;
+  width: 100%;
+}
+
+.btn-outline-danger { border: 1px solid #ef4444; color: #ef4444; }
+.btn-outline-danger:hover:not(:disabled) { background: #ef4444; color: #fff; }
+
+.btn-outline-info { border: 1px solid #3b82f6; color: #3b82f6; }
+.btn-outline-info:hover:not(:disabled) { background: #3b82f6; color: #fff; }
+
+.btn-outline-secondary { border: 1px solid #666; color: #888; }
+.btn-outline-secondary:hover:not(:disabled) { background: #666; color: #fff; }
+
+button:disabled { opacity: 0.5; cursor: not-allowed; }
 </style>
