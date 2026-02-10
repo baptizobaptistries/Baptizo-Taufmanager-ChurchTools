@@ -80,17 +80,17 @@
           <ul class="checklist">
             <li :class="{ complete: status.interestGroup }">
               <span class="status-icon">{{ status.interestGroup ? '✓' : '○' }}</span>
-              <span class="label">Gruppe: Interessenten</span>
+              <span class="label">Gruppe: Interessenten{{ currentSuffix }}</span>
               <span class="id-badge" v-if="currentProfileSettings.interestGroupId">ID: {{ currentProfileSettings.interestGroupId }}</span>
             </li>
             <li :class="{ complete: status.baptizedGroup }">
               <span class="status-icon">{{ status.baptizedGroup ? '✓' : '○' }}</span>
-              <span class="label">Gruppe: Getauft</span>
+              <span class="label">Gruppe: Getauft{{ currentSuffix }}</span>
                <span class="id-badge" v-if="currentProfileSettings.baptizedGroupId">ID: {{ currentProfileSettings.baptizedGroupId }}</span>
             </li>
             <li :class="{ complete: status.calendar }">
               <span class="status-icon">{{ status.calendar ? '✓' : '○' }}</span>
-              <span class="label">Kalender: Taufmanager</span>
+              <span class="label">Kalender: Taufmanager{{ currentSuffix }}</span>
               <span class="id-badge" v-if="currentProfileSettings.calendarId">ID: {{ currentProfileSettings.calendarId }}</span>
             </li>
           </ul>
