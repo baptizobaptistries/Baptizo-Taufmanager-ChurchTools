@@ -26,7 +26,6 @@ export class PersonService implements DataProvider {
         console.log(`[Baptizo] Versuche Daten zu laden für Gruppe: ${groupId} (${title})`);
 
         const settings = await getAdminSettings();
-        const aktivId = settings?.statusAktivId || '4';
         const inaktivId = settings?.statusInaktivId || '5';
 
         try {
@@ -79,8 +78,6 @@ export class PersonService implements DataProvider {
                     };
 
                     const hasBaptismDate = !!personDetail.taufmanager_taufe;
-                    const hasOnboarding = !!personDetail.taufmanager_onboarding;
-                    const hasOffboarding = !!personDetail.taufmanager_offboarding;
 
                     let entryDate = personDetail.taufmanager_onboarding;
                     if (!entryDate && m.comment && m.comment.match(/^\d{4}-\d{2}-\d{2}$/)) {
@@ -105,7 +102,7 @@ export class PersonService implements DataProvider {
                         };
                     }
 
-                    if (hasOffboarding) {
+                    if (personDetail.taufmanager_offboarding) {
                         await this.removePersonFromGroup(m.personId, interestGroupId);
                         await this.removePersonFromGroup(m.personId, baptizedGroupId);
                         return;
@@ -322,7 +319,7 @@ export class PersonService implements DataProvider {
         }
     }
 
-    async createEvent(event: Omit<BaptizoEvent, 'id'>): Promise<BaptizoEvent> {
+    async createEvent(_event: Omit<BaptizoEvent, 'id'>): Promise<BaptizoEvent> {
         throw new Error('Method not implemented.');
     }
 
