@@ -171,8 +171,8 @@ export class SetupService {
         console.log(`[Baptizo] Creating Group: ${name}`);
         const res = await churchtoolsClient.post('/groups', {
             name: name,
-            groupTypeId: 3, // Dienstgruppe
-            groupCategoryId: 3,
+            groupTypeId: 1, // Standard / Kleingruppe
+            groupCategoryId: 1, // Standard
             groupStatusId: 1 // Aktiv
         });
         return (res as any).id || (res as any).data?.id;

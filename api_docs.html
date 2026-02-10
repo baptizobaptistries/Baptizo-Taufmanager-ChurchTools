@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+
+<html lang="de" dir="ltr">
+<!--
+******************************************************************************************************************************
+*   /$$      /$$ /$$                             /$$               /$$ /$$                                     /$$           *
+*  | $$  /$ | $$|__/                            | $$              | $$| $$                                    |__/           *
+*  | $$ /$$$| $$ /$$  /$$$$$$         /$$$$$$$ /$$$$$$    /$$$$$$ | $$| $$  /$$$$$$  /$$$$$$$         /$$$$$$  /$$ /$$$$$$$  *
+*  | $$/$$ $$ $$| $$ /$$__  $$       /$$_____/|_  $$_/   /$$__  $$| $$| $$ /$$__  $$| $$__  $$       /$$__  $$| $$| $$__  $$ *
+*  | $$$$_  $$$$| $$| $$  \__/      |  $$$$$$   | $$    | $$$$$$$$| $$| $$| $$$$$$$$| $$  \ $$      | $$$$$$$$| $$| $$  \ $$ *
+*  | $$$/ \  $$$| $$| $$             \____  $$  | $$ /$$| $$_____/| $$| $$| $$_____/| $$  | $$      | $$_____/| $$| $$  | $$ *
+*  | $$/   \  $$| $$| $$             /$$$$$$$/  |  $$$$/|  $$$$$$$| $$| $$|  $$$$$$$| $$  | $$      |  $$$$$$$| $$| $$  | $$ *
+*  |__/     \__/|__/|__/            |_______/    \___/   \_______/|__/|__/ \_______/|__/  |__/       \_______/|__/|__/  |__/ *
+******************************************************************************************************************************
+  https://www.church.tools/de/jobs
+-->
+
+
+<head>
+    <meta charset="utf-8">
+    <title>Baptizo Baptistries - API</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0">
+    <meta name="description" content="ChurchTools">
+    <meta name="author" content="">
+    <!-- Start SmartBanner configuration -->
+    <meta name="smartbanner:title" content="ChurchTools App">
+    <meta name="smartbanner:icon-apple" content="system/assets/img/ct-logo.png">
+    <meta name="smartbanner:icon-google" content="system/assets/img/ct-logo.png">
+    <meta name="smartbanner:button" content="Herunterladen">
+    <meta name="smartbanner:button-url-apple" content="https://apps.apple.com/de/app/churchtools/id1413263051">
+    <meta name="smartbanner:button-url-google" content="https://play.google.com/store/apps/details?id=tools.church.app">
+    <meta name="smartbanner:enabled-platforms" content="android,ios">
+    <meta name="smartbanner:hide-path" content="/">
+    <meta name="smartbanner:hide-ttl" content="604800000">
+    <meta name="smartbanner:custom-design-modifier" content="ct">
+    <meta name="smartbanner:close-label" content="Schließen">
+    <meta name="smartbanner:api" content="yes">
+    <!-- End SmartBanner configuration -->
+    <base href="https://baptizo.church.tools/">
+    <style>
+        @layer theme, base, oldcss, components, utilities;
+    </style>
+    <script type="text/javascript">
+        function setColorScheme(theme) {
+            var meta = document.createElement('meta');
+            meta.name = "color-scheme";
+            meta.content = theme;
+            document.getElementsByTagName('head')[0].appendChild(meta);
+            if (theme === 'dark') {
+                document.querySelector('body')?.classList.add('dark');
+                document.querySelector('body')?.classList.remove('light');
+            } else {
+                document.querySelector('body')?.classList.add('light');
+                document.querySelector('body')?.classList.remove('dark');
+            }
+        }
+        //determines if the user has a set theme
+        function detectColorScheme() {
+            var theme = 'light'; //default to light
+            if (window.localStorage && window.matchMedia && typeof Storage !== 'undefined' && typeof localStorage === 'object' && typeof localStorage.getItem === 'function') {
+                const storageTheme = localStorage.getItem('theme');
+                if (storageTheme) {
+                    var printview = false;                    if (!printview && !window.matchMedia('print').matches && (storageTheme === 'dark' || (storageTheme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches))) {
+                        theme = 'dark';
+                    }
+                } else {
+                    localStorage.setItem('theme', 'light');
+                }
+            }
+            if (window.location.search.includes('darkmode=true')) {
+                theme = 'dark';
+            }
+            setColorScheme(theme);
+        }
+        detectColorScheme();
+    </script>
+
+    <script type="application/json" id="ct-settings-json">
+        {"version":"3.128.3","jsversion":"32685","settings":{"files_url":"https:\/\/baptizo.church.tools\/sites\/default","base_url":"https:\/\/baptizo.church.tools\/","q":null,"sitename":"Baptizo Baptistries","short_name":"Baptizo Baptistries","test":false,"hosting":true,"openstreetmaps_enabled":true,"datasecurity_privacy_declaration_wiki_link":"?q=churchwiki#WikiView\/filterWikicategory_id:0\/doc:Datenschutzerkl%C3%A4rung\/","impressum_wiki_link":"https:\/\/baptizo.church.tools\/wiki\/0\/Impressum","data_privacy_link":"https:\/\/baptizo.church.tools\/dataprivacy","impressum_link":"https:\/\/baptizo.church.tools\/impressum","show_data_privacy_link":false,"datasecurity_banner_enabled":false,"minPasswordLength":"8","maxUploadFileSize":131072,"preventExport":false,"samlActive":false,"isSamlUser":false,"isLdapActive":false,"isNewMarkdownActive":false,"isReportsEditActive":false,"isFeatureFlagUiActive":false,"isPostsActive":true,"hasSyncLicense":true,"firstSyncJob":null,"maxAllowedSyncConnections":"99999","orderStatus":"Test-System","orderStatusIsTrial":false,"orderStatusIsFinder":false,"orderStatusIsWebsiteCombo":false,"orderStatusIsOrder":false,"orderStatusIsDecision":false,"orderStatusIsConsider":false,"orderStatusSinceDate":"2025-11-23T23:00:00.000Z","trialStatusSinceDate":"2025-11-24T15:24:50Z","verificationStatus":"not_verified","finderUrl":"https:\/\/find.church.tools","package":"XXL","isComboPackage":false,"showRememberMe":true,"csrfToken":"3aa0c7ca903f44ee1cc77001da34c5c97fea5c15e27111472c0a0af07f673073","auth":{"churchcore":{"administer settings":true,"edit public profiles":true,"view website":true,"edit website staff":true,"edit website releases":true,"administer persons":true,"view logfile":true,"edit languages":{"6":"6","1":"1","2":"2","4":"4","7":"7","11":"11","3":"3","16":"16","10":"10","13":"13","9":"9","8":"8","5":"5"},"edit translations masterdata":true,"simulate persons":true,"invite persons":true,"administer church html templates":true,"use church html templates":{"1":"1","4":"4","7":"7"},"administer custom modules":true,"admin":true,"view":true},"post":{"moderate posts":true},"churchdb":{"view":true,"view station":["0"],"view alldata":{"1":"1"},"security level person":{"99999":99999},"security level view own data":{"99999":99999},"security level edit own data":{"99999":99999},"create person":true,"write access":true,"delete persons":true,"push\/pull archive":true,"view archive":true,"view statistics":true,"view person tags":true,"view comments":["0","1","2"],"export data":true,"edit bulkletter":true,"create print labels":true,"send sms":true,"view person history":true,"edit relations":true,"view memberliste":true,"complex filter":true,"administer global filters":true,"edit masterdata":true},"churchgroup":{"view":true,"edit group":{"6":"6","7":"7","8":"8","9":"9","10":"10","11":"11","13":"13","16":"16","25":"25","28":"28","12":"12"},"delete group":{"6":"6","7":"7","8":"8","9":"9","10":"10","11":"11","13":"13","16":"16","25":"25","28":"28","12":"12"},"create groups of grouptype":{"1":"1","2":"2","3":"3","4":"4"},"view groups of grouptype":{"1":"1","2":"2","3":"3","4":"4"},"edit groups of grouptype":{"1":"1","2":"2","3":"3","4":"4"},"delete groups of grouptype":{"1":"1","2":"2","3":"3","4":"4"},"edit group memberships of grouptype":{"1":"1","2":"2","3":"3","4":"4"},"edit group memberships of group":{"6":"6","7":"7","8":"8","9":"9","10":"10","11":"11","13":"13","16":"16","25":"25","28":"28","12":"12"},"administer groups":true,"security level group":{"99999":99999},"view group history":true,"view group tags":true,"administer global views":true,"edit masterdata":true},"churchcal":{"view":true,"view category":{"1":"1","2":"2","3":"3"},"edit category":{"1":"1","2":"2","3":"3","4":"4","5":"5","7":"7"},"edit calendar entry template":{"1":"1","2":"2","3":"3","4":"4","5":"5","7":"7"},"assistance mode":true,"create personal category":true,"admin personal category":true,"create group category":true,"admin group category":true,"admin church category":true,"admin appointment tags":true},"churchresource":{"view":true,"view resource":{"1":"1","2":"2","3":"3","4":"4","5":"5","6":"6","7":"7"},"create bookings":{"1":"1","2":"2","3":"3","4":"4","5":"5","6":"6","7":"7"},"create virtual bookings":true,"administer bookings":{"1":"1","2":"2","3":"3","4":"4","5":"5","6":"6","7":"7"},"assistance mode":true,"edit masterdata":true},"churchservice":{"view":true,"view servicegroup":{"1":"1","3":"3","4":"4"},"edit servicegroup":{"1":"1","3":"3","4":"4"},"view history":true,"view events":{"4":"4","1":"1","2":"2","3":"3","5":"5","7":"7"},"edit events":{"1":"1","2":"2","3":"3","4":"4","5":"5","7":"7"},"edit template":true,"manage absent":true,"view fact":{"1":"1","2":"2"},"edit fact":{"1":"1","2":"2"},"export facts":true,"view agenda":{"1":"1","2":"2","3":"3","4":"4","5":"5","7":"7"},"edit agenda":{"1":"1","2":"2","3":"3","4":"4","5":"5","7":"7"},"edit agenda templates":{"1":"1","2":"2","3":"3","4":"4","5":"5","7":"7"},"view songcategory":["0","1"],"edit songcategory":["0","1"],"view song statistics":true,"use ccli":true,"edit masterdata":true},"churchcheckin":{"view":true,"create person":true,"edit masterdata":true},"churchwiki":{"view":true,"view category":["0"],"edit category":["0"],"edit masterdata":true},"finance":{"view":true,"view accounting period":{"1":"1"},"edit accounting period":{"1":"1"},"edit masterdata":true},"churchsync":{"view":true},"baptizotaufmanager":{"view":true,"view custom category":{"1":"1"},"create custom category":true,"edit custom category":{"1":"1"},"delete custom category":{"1":"1"},"view custom data":{"1":"1"},"create custom data":{"1":"1"},"edit custom data":{"1":"1"},"delete custom data":{"1":"1"}},"churchhome":{"view":true},"logout":{"view":true},"login":{"view":true},"profile":{"view":true},"help":{"view":true},"cron":{"view":true},"ical":{"view":true},"churchauth":{"view":true},"churchtranslate":{"view":true},"twofactorsetup":{"view":true},"ccli":{"view":true},"simulate":{"view":true},"admin":{"view":true,"super":true},"webchat":{"view":true},"lastCalculation":1770754065},"showCronPixel":true,"ct_version":"3.128.3","brand":"ChurchTools","chatServer":"https:\/\/chat.church.tools","webchatLink":"https:\/\/webchat.church.tools","modules":["churchhome","post","churchdb","churchgroup","churchcal","churchresource","churchservice","churchcheckin","churchwiki","finance","churchsync","baptizotaufmanager"],"matomo_uri":null,"websiteOrderStatus":"","websiteUrl":"","aiAssistantAvailable":true,"showAIAssistant":true,"maxAllowedCWBUsers":"5","evangelischeTermineEnabled":false,"evangelischeTermineName":"Evangelische Termine","isGroupsModuleActive":true,"languages":{"1":{"id":"1","code":"de","name":"Deutsch","active_yn":"1","sortkey":"1"},"2":{"id":"2","code":"en","name":"English","active_yn":"1","sortkey":"2"},"3":{"id":"3","code":"fr","name":"Fran\u00e7ais","active_yn":"1","sortkey":"3"},"4":{"id":"4","code":"es","name":"Espa\u00f1ol","active_yn":"1","sortkey":"4"},"5":{"id":"5","code":"tw","name":"\u7e41\u9ad4\u4e2d\u6587","active_yn":"1","sortkey":"5"},"6":{"id":"6","code":"cn","name":"\u7b80\u4f53\u4e2d\u6587","active_yn":"1","sortkey":"6"},"7":{"id":"7","code":"fa","name":"\u0641\u0627\u0631\u0633\u06cc","active_yn":"1","sortkey":"7"},"8":{"id":"8","code":"ru","name":"\u0420\u0443\u0441\u0441\u043a\u0438\u0439","active_yn":"1","sortkey":"8"},"9":{"id":"9","code":"pt","name":"Portugu\u00eas","active_yn":"1","sortkey":"8"},"10":{"id":"10","code":"nl","name":"Nederlands","active_yn":"1","sortkey":"14"},"13":{"id":"13","code":"pl","name":"Polski","active_yn":"1","sortkey":"15"},"16":{"id":"16","code":"it","name":"Italiano","active_yn":"1","sortkey":"16"},"11":{"id":"11","code":"fi","name":"Suomi","active_yn":"1","sortkey":"17"}},"language":"de","browsertabId":299289512,"user":{"id":"1","vorname":"Stefan","name":"Sch\u00f6del","email":"mail@baptizo.church","imageurl":"2ec3ca559028872aa482b2284d793097318bf87d389fce2f12ec531e99ac553a","imageUrl":"https:\/\/baptizo.church.tools\/images\/73\/bee553e52ea63d2a1679927fb70cbf9495a523f838ce4edaf6b41d398e09aa9f","familyImageUrl":"","hasPassword":true},"simulate":false},"extern_url":"https:\/\/baptizo.church.tools\/"}    </script>
+    <script type="text/javascript" src="system/assets/smartbanner.js/smartbanner.min.js?32685"></script><script type="text/javascript" src="system/churchcore/base.js?32685"></script>    <script src="sites/default/files/messages/churchcore_de.js?32685"></script>
+    <link rel="shortcut icon" href="system/assets/ico/favicon.ico">
+    <link rel="apple-touch-icon-precomposed" sizes="144x144" href="system/assets/ico/apple-touch-icon-144-precomposed.png">
+    <link rel="apple-touch-icon-precomposed" sizes="114x114" href="system/assets/ico/apple-touch-icon-114-precomposed.png">
+    <link rel="apple-touch-icon-precomposed" sizes="72x72" href="system/assets/ico/apple-touch-icon-72-precomposed.png">
+    <link rel="apple-touch-icon-precomposed" href="system/assets/ico/apple-touch-icon-57-precomposed.png">
+    
+    <link href='https://baptizo.church.tools/system/runtime/swagger/swagger-ui.css?32685' rel='stylesheet'>
+<script src='https://baptizo.church.tools/system/runtime/swagger/swagger-ui-bundle.js?32685'></script>
+<script src='https://baptizo.church.tools/system/churchcore/openapi.js?32685'></script>
+        
+<script type="module" crossorigin src="system/dist/assets/index-BpQ_nWK8.js"></script>
+
+<link rel="stylesheet" href="system/dist/assets/index-Dk96f4e1.css">    <noscript>
+        <style>
+            /**
+            * Reinstate scrolling for non-JS clients
+            */
+            .simplebar-content-wrapper {
+                scrollbar-width: auto;
+                -ms-overflow-style: auto;
+            }
+
+            .simplebar-content-wrapper::-webkit-scrollbar,
+            .simplebar-hide-scrollbar::-webkit-scrollbar {
+                display: initial;
+                width: initial;
+                height: initial;
+            }
+        </style>
+    </noscript>
+</head>
+
+
+        <body class="">
+        
+                    <div id="navigation">
+                <div></div>
+            </div>
+        
+                        <div class="container-fluid" id="page">
+                
+                <div id="content" class="flex flex-col"></div><style>#operations-tag-Hidden {display: none} #model-Hidden {display: none}</style><div id="ct-openapi"></div></div>
+    <div id="ct-modal-container" class="cts"></div>
+
+<div id="old-modal-container"></div>
+<div class="cts">
+    <div id="media-player-wrapper"></div>
+            <div id="footer"></div>
+        <div id="modal-container"></div>
+    <div id="info-message-container" class="flex justify-center" style="--color-link: var(--color-accent-tertiary)"></div>
+</div>
+</body>
+
+</html>
