@@ -630,7 +630,7 @@ import OnboardingModal from './OnboardingModal.vue';
 import OffboardingModal from './OffboardingModal.vue';
 import { DEFAULT_SETTINGS } from '../types/baptizo-settings';
 import type { BaptizoSettings } from '../types/baptizo-settings';
-import { getAdminSettings, type AdminSettings } from '../lib/kv-store';
+import { getActiveAdminSettings, type ProfileSettings } from '../lib/kv-store';
 
 const props = defineProps<{
   user?: any;
@@ -653,7 +653,7 @@ const settings = ref<BaptizoSettings>({ ...DEFAULT_SETTINGS });
 const currentTab = ref('dashboard');
 const showAdminView = ref(false);
 const selectedPerson = ref<BaptizoPerson | null>(null);
-const adminSettings = ref<AdminSettings | null>(null);
+const adminSettings = ref<ProfileSettings | null>(null);
 const showOnboardingModal = ref(false);
 const showOffboardingModal = ref(false);
 const showPersonModal = ref(false);
@@ -782,7 +782,7 @@ const loadData = async () => {
     const [groupsData, settingsData, adminCfg, eventsDataRes] = await Promise.all([
       provider.getGroups().catch(e => { console.error('[Baptizo] getGroups failed:', e); return []; }),
       provider.getSettings().catch(e => { console.error('[Baptizo] getSettings failed:', e); return {}; }),
-      getAdminSettings().catch(e => { console.error('[Baptizo] getAdminSettings failed:', e); return null; }),
+      getActiveAdminSettings().catch(e => { console.error('[Baptizo] getActiveAdminSettings failed:', e); return null; }),
       eventService.getEvents().catch(e => { console.error('[Baptizo] getEvents failed:', e); return []; })
     ]);
     

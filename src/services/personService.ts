@@ -1,7 +1,7 @@
 import { churchtoolsClient } from '@churchtools/churchtools-client';
 import type { DataProvider } from './data-provider.interface';
 import type { BaptizoGroup, BaptizoPerson, BaptizoFields, BaptizoEvent } from '../types/baptizo-types';
-import { getAdminSettings, getAppSettings, saveAppSettings } from '../lib/kv-store';
+import { getActiveAdminSettings, getAppSettings, saveAppSettings } from '../lib/kv-store';
 
 /**
  * Real DataProvider implementation using ChurchTools API.
@@ -15,7 +15,7 @@ export class PersonService implements DataProvider {
         const keys = Object.keys(client).filter(k => typeof client[k] === 'function');
         console.log(`[Baptizo] Client Diagnostic: Methods=[${keys.join(', ')}], csrf=${!!(client.csrfToken || client._csrfToken || client.ax?.defaults?.headers?.common?.['x-csrf-token'])}`);
 
-        const settings = await getAdminSettings();
+        const settings = await getActiveAdminSettings();
 
         // If settings are missing or incomplete, return empty to trigger dashboard warning
         if (!settings || !settings.interestGroupId || !settings.baptizedGroupId) {
@@ -260,7 +260,7 @@ export class PersonService implements DataProvider {
 
             // INSTANT GROUP SYNC: If baptism date was updated, trigger group reconciliation
             if (fields.getauft_am !== undefined || fields.taufmanager_offboarding !== undefined || fields.taufmanager_onboarding !== undefined) {
-                const settings = await getAdminSettings();
+                const settings = await getActiveAdminSettings();
                 if (settings?.interestGroupId && settings?.baptizedGroupId) {
                     const interestId = parseInt(settings.interestGroupId);
                     const baptizedId = parseInt(settings.baptizedGroupId);
@@ -401,7 +401,7 @@ export class PersonService implements DataProvider {
     }
 
     async getEvents(): Promise<BaptizoEvent[]> {
-        const settings = await getAdminSettings();
+        const settings = await getActiveAdminSettings();
         if (!settings || !settings.calendarId) return [];
 
         try {
@@ -461,7 +461,7 @@ export class PersonService implements DataProvider {
     }
 
     async runGlobalDiscoveryAndSync(): Promise<{ addedToInterest: number; addedToBaptized: number; removedFromInterest: number; realOrphans: string[] }> {
-        const settings = await getAdminSettings();
+        const settings = await getActiveAdminSettings();
         if (!settings || !settings.interestGroupId || !settings.baptizedGroupId) {
             return { addedToInterest: 0, addedToBaptized: 0, removedFromInterest: 0, realOrphans: [] };
         }

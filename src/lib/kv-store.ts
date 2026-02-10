@@ -12,15 +12,25 @@ import {
     updateCustomDataValue
 } from '../utils/kv-store';
 
-export interface AdminSettings {
+export type EnvironmentProfile = 'development' | 'end-user';
+
+export interface ProfileSettings {
     interestGroupId: string;
     baptizedGroupId: string;
     seminarDateId: string;
     baptismDateId: string;
     certificateDateId: string;
     integratedDateId: string;
+    onboardingDateId: string;
+    offboardingDateId: string;
     statusFieldId: string;
     calendarId: string;
+}
+
+export interface AdminSettings {
+    activeProfile: EnvironmentProfile;
+    development: ProfileSettings;
+    'end-user': ProfileSettings;
 }
 
 const MODULE_KEY = 'baptizotaufmanager';
@@ -44,49 +54,79 @@ export async function getAdminSettings(): Promise<AdminSettings | null> {
         // 2. Get Settings Category
         let category = await getCustomDataCategory(SETTINGS_CATEGORY);
 
-        if (!category) {
-            console.log('[Baptizo] Settings category not found. Returning defaults.');
+        let remoteSettings: any = null;
+
+        if (category) {
+            // 3. Get Values
+            const values = await getCustomDataValues<any>(category.id, module.id);
+            // Distinguish by 'name' property inside the JSON payload
+            const configValue = values.find(v => v.name === 'config');
+            if (configValue && configValue.value) {
+                try {
+                    remoteSettings = JSON.parse(configValue.value);
+                } catch (e) {
+                    console.error('[Baptizo] Error parsing remote config JSOn', e);
+                }
+            }
+        }
+
+        // 4. Fallback to localStorage if remote failed
+        if (!remoteSettings) {
+            const local = localStorage.getItem(ADMIN_SETTINGS_KEY);
+            if (local) {
+                remoteSettings = JSON.parse(local);
+            }
+        }
+
+        // 5. Migration & Defaults logic
+        if (!remoteSettings) {
             return getDefaultAdminSettings();
         }
 
-        // 3. Get Values
-        const values = await getCustomDataValues<any>(category.id, module.id);
+        // Check if it's the old flat structure
+        if (remoteSettings.interestGroupId && !remoteSettings.activeProfile) {
+            console.log('[Baptizo] Migrating flat settings to Development profile...');
+            const defaults = getDefaultAdminSettings();
 
-        // Map values to AdminSettings object
-        const settings: any = {};
-        values.forEach(v => {
-            // We assume the 'name' of the value is the key (e.g. 'interestGroupId')
-            // But usually CustomDataValues have a 'name' field? 
-            // The Boilerplate stores data in 'value' as JSON? 
-            // Time-Tracker usage: One value named 'config' containing all settings?
-            // OR individual values? 
-
-            // LET'S USE A SINGLE VALUE named 'config' for simplicity and atomicity
-            if (v.name === 'config') {
-                Object.assign(settings, v);
-            }
-        });
-
-        // If we found a config object, use it.
-        if (Object.keys(settings).length > 0) {
-            console.log('[Baptizo] Settings loaded from CustomModule.');
-            // Remove metadata fields from the result object if they leaked in
-            const { id, domainType, domainId, ...cleanSettings } = settings;
-            return cleanSettings as AdminSettings;
+            // Map old flat keys to Development profile
+            const migrated: AdminSettings = {
+                activeProfile: 'development',
+                development: {
+                    interestGroupId: remoteSettings.interestGroupId || defaults.development.interestGroupId,
+                    baptizedGroupId: remoteSettings.baptizedGroupId || defaults.development.baptizedGroupId,
+                    seminarDateId: remoteSettings.seminarDateId || '',
+                    baptismDateId: remoteSettings.baptismDateId || '',
+                    certificateDateId: remoteSettings.certificateDateId || '',
+                    integratedDateId: remoteSettings.integratedDateId || '',
+                    onboardingDateId: '',
+                    offboardingDateId: '',
+                    statusFieldId: remoteSettings.statusFieldId || '',
+                    calendarId: remoteSettings.calendarId || defaults.development.calendarId,
+                },
+                'end-user': { ...defaults['end-user'] }
+            };
+            return migrated;
         }
 
+        // Return as is if it's the new structure
+        return remoteSettings as AdminSettings;
+
     } catch (error) {
-        console.warn('[Baptizo] CustomModule API failed. Falling back to local.', error);
+        console.warn('[Baptizo] CustomModule API failed completely.', error);
+        return getDefaultAdminSettings();
     }
+}
 
-    // Fallback: localStorage
-    const local = localStorage.getItem(ADMIN_SETTINGS_KEY);
-    if (local) {
-        console.log('[Baptizo] Settings recovered from localStorage.');
-        return JSON.parse(local);
-    }
+/**
+ * Convenient helper to get only the flat settings of the ACTIVE profile.
+ * Useful for all services that don't care about the profile structure itself.
+ */
+export async function getActiveAdminSettings(): Promise<ProfileSettings> {
+    const settings = await getAdminSettings();
+    const defaults = getDefaultAdminSettings();
+    if (!settings) return defaults.development;
 
-    return getDefaultAdminSettings();
+    return settings[settings.activeProfile] || settings.development || defaults.development;
 }
 
 /**
@@ -116,18 +156,18 @@ export async function saveAdminSettings(settings: AdminSettings): Promise<boolea
         const values = await getCustomDataValues<any>(category.id, module.id);
         const configValue = values.find(v => v.name === 'config');
 
-        const payloadToSave = { ...settings, name: 'config' };
-
         if (configValue) {
-            // Update
+            // Update: Payload is the settings object + name tag
+            const payload = { ...settings, name: 'config' };
             await updateCustomDataValue(category.id, configValue.id, {
-                value: JSON.stringify(payloadToSave)
+                value: JSON.stringify(payload)
             }, module.id);
         } else {
-            // Create
+            // Create: Payload is the settings object + name tag
+            const payload = { ...settings, name: 'config' };
             await createCustomDataValue({
                 dataCategoryId: category.id,
-                value: JSON.stringify(payloadToSave)
+                value: JSON.stringify(payload)
             }, module.id);
         }
 
@@ -144,15 +184,36 @@ export async function saveAdminSettings(settings: AdminSettings): Promise<boolea
  * Default IDs for the specific ChurchTools test system.
  */
 export function getDefaultAdminSettings(): AdminSettings {
-    return {
+    const devProfile: ProfileSettings = {
         interestGroupId: '13',
         baptizedGroupId: '16',
         seminarDateId: '',
         baptismDateId: '',
         certificateDateId: '',
         integratedDateId: '',
+        onboardingDateId: '',
+        offboardingDateId: '',
         statusFieldId: '',
         calendarId: '7'
+    };
+
+    const endUserProfile: ProfileSettings = {
+        interestGroupId: '',
+        baptizedGroupId: '',
+        seminarDateId: '',
+        baptismDateId: '',
+        certificateDateId: '',
+        integratedDateId: '',
+        onboardingDateId: '',
+        offboardingDateId: '',
+        statusFieldId: '',
+        calendarId: ''
+    };
+
+    return {
+        activeProfile: 'development',
+        development: devProfile,
+        'end-user': endUserProfile
     };
 }
 

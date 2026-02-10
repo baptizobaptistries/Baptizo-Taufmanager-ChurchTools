@@ -2,7 +2,7 @@
 // Run this once to update all persons' onboarding dates to 2-20 days before seminar
 
 import { churchtoolsClient } from '@churchtools/churchtools-client';
-import { getAdminSettings } from '../lib/kv-store';
+import { getActiveAdminSettings } from '../lib/kv-store';
 
 export async function migrateOnboardingDates(): Promise<{ updated: number; skipped: number; errors: number }> {
     console.log('[Migration] Starting onboarding date migration...');
@@ -21,7 +21,7 @@ export async function migrateOnboardingDates(): Promise<{ updated: number; skipp
         console.error('[Migration] Could not test field names:', e);
     }
 
-    const adminCfg = await getAdminSettings();
+    const adminCfg = await getActiveAdminSettings();
     const interestGroupId = parseInt(adminCfg?.interestGroupId || '0');
     const baptizedGroupId = parseInt(adminCfg?.baptizedGroupId || '0');
 
