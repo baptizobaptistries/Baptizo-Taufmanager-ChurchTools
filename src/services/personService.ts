@@ -105,14 +105,21 @@ export class PersonService implements DataProvider {
 
                     // SOFT SYNC: Check for baptism date consistency
                     const hasBaptismDate = !!personDetail.taufmanager_taufe;
+                    const hasOnboarding = !!personDetail.taufmanager_onboarding;
+                    const hasOffboarding = !!personDetail.taufmanager_offboarding;
+
+                    // If NOT enrolled or OFFBOARDED, they should not be in either group
+                    if (!hasOnboarding || hasOffboarding) {
+                        console.log(`[Baptizo] ⚠ Soft Sync: ${personDetail.firstName} is ${!hasOnboarding ? 'not enrolled' : 'offboarded'}. Removing from groups.`);
+                        await this.removePersonFromGroup(m.personId, interestGroupId);
+                        await this.removePersonFromGroup(m.personId, baptizedGroupId);
+                        return; // Done for this person
+                    }
 
                     if (groupId === baptizedGroupId && !hasBaptismDate) {
                         console.log(`[Baptizo] ⚠ Soft Sync: ${personDetail.firstName} in Baptized group but NO date. Moving to Interest.`);
-                        // Attempt to fix sync issues: add to new group FIRST, then remove from old
                         await this.addPersonToGroup(m.personId, interestGroupId);
                         await this.removePersonFromGroup(m.personId, baptizedGroupId);
-                        // Do NOT return; let the person be rendered in the current group result 
-                        // so they don't disappear during the move. They will be in the correct group next refresh.
                     }
 
                     if (groupId === interestGroupId && hasBaptismDate) {
@@ -233,23 +240,22 @@ export class PersonService implements DataProvider {
             console.log(`[Baptizo] ✓ Successfully updated person ${personId}`);
 
             // INSTANT GROUP SYNC: If baptism date was updated, trigger group reconciliation
-            if (fields.getauft_am !== undefined) {
-                console.log(`[Baptizo] ⚠ Sync Trigger: Paul Hartmann case or similar. getauft_am=${fields.getauft_am}`);
-
-                // SAFETY: Skip Admin Stefan (PID 1) also in instant update
-                if (personId === 1) {
-                    console.log(`[Baptizo] 🛡 Admin Protection: Skipping group move for PID 1`);
-                    return;
-                }
-
+            if (fields.getauft_am !== undefined || fields.taufmanager_offboarding !== undefined || fields.taufmanager_onboarding !== undefined) {
                 const settings = await getAdminSettings();
-                console.log(`[Baptizo] Settings loaded for sync:`, settings ? 'YES' : 'NO');
-
                 if (settings?.interestGroupId && settings?.baptizedGroupId) {
                     const interestId = parseInt(settings.interestGroupId);
                     const baptizedId = parseInt(settings.baptizedGroupId);
 
-                    if (fields.getauft_am) {
+                    const detail = await churchtoolsClient.get<any>(`/persons/${personId}`);
+                    const hasOnboarding = !!detail.taufmanager_onboarding;
+                    const hasOffboarding = !!detail.taufmanager_offboarding;
+                    const taufe = detail.taufmanager_taufe;
+
+                    if (!hasOnboarding || hasOffboarding) {
+                        console.log(`[Baptizo] ➔ Clearing groups for ${personId} (Offboarded or Not Enrolled)`);
+                        await this.removePersonFromGroup(personId, interestId);
+                        await this.removePersonFromGroup(personId, baptizedId);
+                    } else if (taufe) {
                         console.log(`[Baptizo] ➔ Moving to Baptized group (Add ${baptizedId}, Remove ${interestId})`);
                         await this.addPersonToGroup(personId, baptizedId);
                         await this.removePersonFromGroup(personId, interestId);
@@ -258,8 +264,6 @@ export class PersonService implements DataProvider {
                         await this.addPersonToGroup(personId, interestId);
                         await this.removePersonFromGroup(personId, baptizedId);
                     }
-                } else {
-                    console.warn(`[Baptizo] ❌ Sync skipped: Group IDs missing in settings.`);
                 }
             }
         } catch (error) {
@@ -507,30 +511,36 @@ export class PersonService implements DataProvider {
                         }
                     }
 
-                    // CASE 2: Active Participant Sync
+                    // CASE 2: Enrollment Sync
                     if (hasOnboarding && !hasOffboarding) {
                         if (hasBaptismDate) {
-                            // Should be in Baptized group
                             if (!inBaptized) {
                                 await this.addPersonToGroup(pid, baptizedGroupId);
                                 stats.addedToBaptized++;
                             }
-                            // Should NOT be in Interest group
                             if (inInterest) {
                                 await this.removePersonFromGroup(pid, interestGroupId);
                                 stats.removedFromInterest++;
                             }
                         } else {
-                            // Should be in Interest group
                             if (!inInterest) {
                                 await this.addPersonToGroup(pid, interestGroupId);
                                 stats.addedToInterest++;
                             }
-                            // Should NOT be in Baptized group
                             if (inBaptized) {
                                 await this.removePersonFromGroup(pid, baptizedGroupId);
-                                // Optional: stats for removal from baptized?
                             }
+                        }
+                    } else {
+                        // Cleanup if they were in groups but shouldn't be
+                        if (inInterest) {
+                            console.log(`[Baptizo] Sync Cleanup: Removing ${name} (${pid}) from Interest`);
+                            await this.removePersonFromGroup(pid, interestGroupId);
+                            stats.removedFromInterest++;
+                        }
+                        if (inBaptized) {
+                            console.log(`[Baptizo] Sync Cleanup: Removing ${name} (${pid}) from Baptized`);
+                            await this.removePersonFromGroup(pid, baptizedGroupId);
                         }
                     }
                 }
