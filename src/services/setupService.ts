@@ -171,11 +171,9 @@ export class SetupService {
         console.log(`[Baptizo] Creating Group: ${name}`);
         const res = await churchtoolsClient.post('/groups', {
             name: name,
-            information: {
-                groupTypeId: 3, // Dienstgruppe
-                groupCategoryId: 3, // Standard? 
-                color: 'blue'
-            }
+            groupTypeId: 3, // Dienstgruppe
+            groupCategoryId: 3,
+            groupStatusId: 1 // Aktiv
         });
         return (res as any).id || (res as any).data?.id;
     }
@@ -185,7 +183,7 @@ export class SetupService {
         const res = await churchtoolsClient.post('/calendars', {
             name: name,
             color: '#3E70CE',
-            isPublic: true
+            type: 'church' // Mandatory for v2
         });
         return (res as any).id || (res as any).data?.id;
     }
