@@ -25,3 +25,11 @@ dist-ssr
 *.sln
 *.sw?
 releases
+
+# Temp/debug files
+temp_*.ts
+temp_*.txt
+scripts/*-output.txt
+
+# Data exports
+docs/*.csv
