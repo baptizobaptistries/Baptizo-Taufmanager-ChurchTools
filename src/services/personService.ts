@@ -8,6 +8,52 @@ import { getAdminSettings, getAppSettings, saveAppSettings } from '../lib/kv-sto
  * Reads configuration from kv-store (Admin Settings).
  */
 export class PersonService implements DataProvider {
+    private participantRoleCache: Map<number, number> = new Map();
+
+    /**
+     * Resolve the "participant" (Teilnehmer) role ID for a group.
+     * This is NOT hardcoded because different CT instances assign different IDs.
+     *   Dev system:   groupType 3 → Teilnehmer role 22
+     *   Willow system: groupType 7 → participant role 46
+     */
+    private async getParticipantRoleId(groupId: number): Promise<number> {
+        // Check cache first
+        if (this.participantRoleCache.has(groupId)) {
+            return this.participantRoleCache.get(groupId)!;
+        }
+
+        try {
+            // Get the group to find its groupTypeId
+            const group = await churchtoolsClient.get<any>(`/groups/${groupId}`);
+            const groupData = group?.data || group;
+            const groupTypeId = groupData?.information?.groupTypeId || groupData?.groupTypeId;
+
+            if (groupTypeId) {
+                // Get roles for this group type from person masterdata
+                const masterdata = await churchtoolsClient.get<any>('/person/masterdata');
+                const roles = masterdata?.data?.roles || masterdata?.roles || [];
+                const participantRole = roles.find(
+                    (r: any) => r.groupTypeId === groupTypeId && r.type === 'participant'
+                );
+                if (participantRole) {
+                    console.log(`[Baptizo] Resolved participant role for group ${groupId} (type ${groupTypeId}): ${participantRole.name} (ID: ${participantRole.id})`);
+                    this.participantRoleCache.set(groupId, participantRole.id);
+                    return participantRole.id;
+                }
+            }
+        } catch (e) {
+            console.warn(`[Baptizo] Could not resolve participant role for group ${groupId}, using default`);
+        }
+
+        // Fallback: return common default
+        console.warn(`[Baptizo] Using fallback participant role ID 22 for group ${groupId}`);
+        return 22;
+    }
+
+    private isParticipant(member: any, participantRoleId: number): boolean {
+        return member.groupTypeRoleId === participantRoleId;
+    }
+
 
     async getGroups(): Promise<BaptizoGroup[]> {
         const settings = await getAdminSettings();
@@ -27,6 +73,7 @@ export class PersonService implements DataProvider {
 
         const settings = await getAdminSettings();
         const inaktivId = settings?.statusInaktivId || '5';
+        const participantRoleId = await this.getParticipantRoleId(groupId);
 
         try {
             let allMembers: any[] = [];
@@ -47,12 +94,12 @@ export class PersonService implements DataProvider {
             }
 
             const exclusionPids = new Set(allMembers
-                .filter(m => m.groupTypeRoleId !== 22)
+                .filter(m => !this.isParticipant(m, participantRoleId))
                 .map(m => m.personId));
             exclusionPids.add(1);
 
             const ctPersons = allMembers.filter(m =>
-                m.groupTypeRoleId === 22 && !exclusionPids.has(m.personId)
+                this.isParticipant(m, participantRoleId) && !exclusionPids.has(m.personId)
             );
 
             const members: BaptizoPerson[] = [];
@@ -87,7 +134,7 @@ export class PersonService implements DataProvider {
                         entryDate = m.memberStartDate;
                     }
 
-                    if (m.groupTypeRoleId !== 22) {
+                    if (!this.isParticipant(m, participantRoleId)) {
                         return {
                             id: m.personId || personDetail.id,
                             firstName: personDetail.firstName,
@@ -255,11 +302,13 @@ export class PersonService implements DataProvider {
         try {
             const client: any = churchtoolsClient;
             if (typeof client.put === 'function') {
-                await client.put(`/groups/${groupId}/members/${personId}`, { groupTypeRoleId: 22 });
+                const roleId = await this.getParticipantRoleId(groupId);
+                await client.put(`/groups/${groupId}/members/${personId}`, { groupTypeRoleId: roleId });
             } else {
                 const ax = client.ax || client;
                 const csrf = client.csrfToken || client._csrfToken || ax.defaults?.headers?.common?.['x-csrf-token'];
-                await ax.put(`/api/groups/${groupId}/members/${personId}`, { groupTypeRoleId: 22 }, { headers: { 'x-csrf-token': csrf } });
+                const roleId2 = await this.getParticipantRoleId(groupId);
+                await ax.put(`/api/groups/${groupId}/members/${personId}`, { groupTypeRoleId: roleId2 }, { headers: { 'x-csrf-token': csrf } });
             }
         } catch (e: any) {
             console.error(`[Baptizo] Failed to add person ${personId} to group ${groupId}:`, e.message);
@@ -359,12 +408,15 @@ export class PersonService implements DataProvider {
             const interestRes = await churchtoolsClient.get<any>(`/groups/${interestGroupId}/members`);
             const baptizedRes = await churchtoolsClient.get<any>(`/groups/${baptizedGroupId}/members`);
 
-            const interestExclusions = new Set((interestRes.data || interestRes || []).filter((m: any) => m.groupTypeRoleId !== 22).map((m: any) => m.personId));
-            const baptizedExclusions = new Set((baptizedRes.data || baptizedRes || []).filter((m: any) => m.groupTypeRoleId !== 22).map((m: any) => m.personId));
+            const interestParticipantRole = await this.getParticipantRoleId(interestGroupId);
+            const baptizedParticipantRole = await this.getParticipantRoleId(baptizedGroupId);
+
+            const interestExclusions = new Set((interestRes.data || interestRes || []).filter((m: any) => !this.isParticipant(m, interestParticipantRole)).map((m: any) => m.personId));
+            const baptizedExclusions = new Set((baptizedRes.data || baptizedRes || []).filter((m: any) => !this.isParticipant(m, baptizedParticipantRole)).map((m: any) => m.personId));
             interestExclusions.add(1); baptizedExclusions.add(1);
 
-            const interestMemberIds = new Set((interestRes.data || interestRes || []).filter((m: any) => m.groupTypeRoleId === 22 && !interestExclusions.has(m.personId)).map((m: any) => m.personId));
-            const baptizedMemberIds = new Set((baptizedRes.data || baptizedRes || []).filter((m: any) => m.groupTypeRoleId === 22 && !baptizedExclusions.has(m.personId)).map((m: any) => m.personId));
+            const interestMemberIds = new Set((interestRes.data || interestRes || []).filter((m: any) => this.isParticipant(m, interestParticipantRole) && !interestExclusions.has(m.personId)).map((m: any) => m.personId));
+            const baptizedMemberIds = new Set((baptizedRes.data || baptizedRes || []).filter((m: any) => this.isParticipant(m, baptizedParticipantRole) && !baptizedExclusions.has(m.personId)).map((m: any) => m.personId));
             const allExclusions = new Set<any>([...Array.from(interestExclusions), ...Array.from(baptizedExclusions)]);
 
             let page = 1;
